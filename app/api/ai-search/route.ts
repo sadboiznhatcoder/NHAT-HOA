@@ -33,7 +33,7 @@ Lưu ý: Mảng "product_ids" chứa tất cả id sản phẩm bạn đã đề
         { role: 'system', content: systemPrompt },
         { role: 'user', content: query || "Xin chào, Nhật Hoa có những dòng sàn nào nổi bật?" }
       ],
-      model: 'llama3-70b-8192',
+      model: 'llama-3.1-8b-instant',
       temperature: 0.1, // very low temp for factual reliability
       response_format: { type: "json_object" },
     });

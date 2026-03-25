@@ -39,7 +39,7 @@ Hãy trả lời một cách cực kỳ chuyên nghiệp, chính xác và sử d
         { role: 'system', content: systemPrompt },
         { role: 'user', content: 'Vui lòng so sánh chi tiết các mã sàn đang chọn để tôi quyết định.' }
       ],
-      model: 'llama3-8b-8192',
+      model: 'llama-3.1-8b-instant',
       temperature: 0.1, // Low temp for analytical accuracy
       max_tokens: 1536,
     });

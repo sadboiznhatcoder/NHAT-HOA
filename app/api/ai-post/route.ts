@@ -54,7 +54,7 @@ LƯU Ý: Nếu không tìm thấy thông tin nào đó, trả về Null hoặc r
         { role: 'system', content: systemPrompt },
         { role: 'user', content: rawText }
       ],
-      model: 'llama3-70b-8192',
+      model: 'llama-3.3-70b-versatile',
       temperature: 0.1,
       response_format: { type: "json_object" },
     });
