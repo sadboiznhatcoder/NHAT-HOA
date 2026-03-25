@@ -8,11 +8,14 @@ import ReactMarkdown from "react-markdown";
 
 // Types
 type FilterState = {
+  brand: string[];
+  category: string[];
   thickness: string[];
   wearLayer: string[];
   type: string[];
   colorTone: string[];
   application: string[];
+  installType: string[];
 };
 
 export default function Home() {
@@ -31,11 +34,14 @@ export default function Home() {
 
   // Advanced Filters State
   const [activeFilters, setActiveFilters] = useState<FilterState>({
+    brand: [],
+    category: [],
     thickness: [],
     wearLayer: [],
     type: [],
     colorTone: [],
-    application: []
+    application: [],
+    installType: []
   });
 
   // LocalStorage Tracking
@@ -182,11 +188,24 @@ export default function Home() {
       if (!activeFilters.application.some(app => specsDump.includes(app.toLowerCase()))) return false;
     }
 
+    // Brand
+    if (activeFilters.brand.length > 0) {
+      if (!activeFilters.brand.some(br => specsDump.includes(br.toLowerCase()))) return false;
+    }
+    // Category
+    if (activeFilters.category.length > 0) {
+      if (!activeFilters.category.some(cat => specsDump.includes(cat.toLowerCase()))) return false;
+    }
+    // Install Type
+    if (activeFilters.installType.length > 0) {
+      if (!activeFilters.installType.some(it => specsDump.includes(it.toLowerCase()))) return false;
+    }
+
     return true;
   });
 
   const clearFilters = () => {
-    setActiveFilters({ thickness: [], wearLayer: [], type: [], colorTone: [], application: [] });
+    setActiveFilters({ brand: [], category: [], thickness: [], wearLayer: [], type: [], colorTone: [], application: [], installType: [] });
   };
 
   const getActiveFilterCount = () => {
@@ -195,12 +214,18 @@ export default function Home() {
 
   if (!mounted) return null;
 
-  // Static Filter Options
+  // Dynamic Brand Extractor
+  const globalBrands = Array.from(new Set(allProducts.map(p => p.brand).filter(Boolean)));
+
+  // Static Filter Options mapping specific catalog taxonomy
   const staticFilters = [
-    { title: "Độ dày (Thickness)", key: "thickness" as keyof FilterState, options: ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm"] },
-    { title: "Lớp bảo vệ (Wear Layer)", key: "wearLayer" as keyof FilterState, options: ["0.1mm", "0.3mm", "0.5mm", "0.7mm"] },
-    { title: "Cấu trúc Sàn", key: "type" as keyof FilterState, options: ["Sàn cuộn", "Sàn tấm", "Sàn thanh", "Sàn hèm khóa"] },
-    { title: "Công Năng Nổi Bật", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao", "Sàn thể thao"] }
+    { title: "Thương hiệu (Brand)", key: "brand" as keyof FilterState, options: globalBrands },
+    { title: "Phân loại Sản phẩm", key: "category" as keyof FilterState, options: ["Sàn Y Tế", "Sàn Thể Thao", "Sàn Văn Phòng", "Sàn Công Nghiệp", "Sàn Giao Thông"] },
+    { title: "Độ dày", key: "thickness" as keyof FilterState, options: ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm"] },
+    { title: "Lớp bảo vệ (Wear Layer)", key: "wearLayer" as keyof FilterState, options: ["0.1mm", "0.3mm", "0.5mm", "0.7mm", "1.0mm"] },
+    { title: "Cấu trúc Sàn", key: "type" as keyof FilterState, options: ["Sàn cuộn", "Sàn tấm", "Sàn thanh", "Sàn hèm khóa", "Sàn nâng"] },
+    { title: "Công Năng Nổi Bật", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao", "Chống trơn trượt", "Cách âm", "Chống cháy"] },
+    { title: "Kiểu lắp đặt", key: "installType" as keyof FilterState, options: ["Dán keo", "Hèm khóa", "Tự dính", "Đặt rời"] },
   ];
 
   return (
@@ -536,16 +561,9 @@ export default function Home() {
                         <div key={idx} className={`bg-white dark:bg-slate-900 rounded-[2rem] border-2 shadow-sm transition-all group overflow-hidden flex flex-col relative ${isComparing ? 'border-indigo-500 dark:border-indigo-500 shadow-indigo-500/20 shadow-xl scale-[1.02]' : 'border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-2xl'}`}>
                           
                           {/* Toolbars in Photo */}
-                          <div className="absolute z-10 top-4 right-4 flex flex-col gap-2">
-                            <button onClick={(e) => toggleWishlist(product.id, e)} className="p-3 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg hover:scale-110 transition-transform">
+                          <div className="absolute z-10 top-4 right-4 flex flex-col gap-2 items-end">
+                            <button onClick={(e) => toggleWishlist(product.id, e)} className="p-3 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg hover:scale-110 transition-transform mb-2">
                               <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                            </button>
-                            <button 
-                              onClick={(e) => toggleCompare(product, e)} 
-                              className={`p-3 rounded-full backdrop-blur-md shadow-lg transition-all hover:scale-110 ${isComparing ? 'bg-indigo-600 text-white' : 'bg-white/90 dark:bg-slate-900/90 text-slate-400 dark:text-slate-500'}`}
-                              title="Đưa vào khối Compare"
-                            >
-                              <Scale className="w-5 h-5" />
                             </button>
                           </div>
 
@@ -590,10 +608,15 @@ export default function Home() {
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.base_price || product.price)}
                                 </p>
                               </div>
-                              <button className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white text-slate-400 transition-all shadow-sm">
-                                <ChevronRight className="w-5 h-5" />
-                              </button>
                             </div>
+                            
+                            {/* Comparison Checkbox Standard */}
+                            <label className="flex items-center gap-2 mt-4 cursor-pointer bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 group/cb" onClick={(e) => toggleCompare(product, e)}>
+                               <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors border-2 ${isComparing ? 'bg-indigo-600 border-indigo-600 shrink-0' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shrink-0 group-hover/cb:border-indigo-400'}`}>
+                                 {isComparing && <Check className="w-3.5 h-3.5 text-white" />}
+                               </div>
+                               <span className={`text-sm font-bold ${isComparing ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`}>Chọn So sánh thông số</span>
+                            </label>
                           </div>
                         </div>
                       );

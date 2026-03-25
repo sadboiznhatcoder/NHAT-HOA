@@ -13,23 +13,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Yêu cầu tối thiểu 2 sản phẩm để so sánh." }, { status: 400 });
     }
 
-    const systemPrompt = `Bạn là Chuyên gia Tư vấn Vật liệu Sàn cấp cao của "Nhật Hoa ICT". Nhiệm vụ của bạn là so sánh chuyên sâu các sản phẩm sau (định dạng JSON):
-    
+    const systemPrompt = `Bạn là Chuyên gia Tư vấn Vật liệu Sàn cấp cao của "Nhật Hoa ICT". Nhiệm vụ tối thượng của bạn là so sánh và trả lời chính xác 3 câu hỏi sau đối với dữ liệu các sản phẩm được cung cấp:
+
+DỮ LIỆU SẢN PHẨM HIỆN TẠI ĐỂ BẠN PHÂN TÍCH:
 ${JSON.stringify(products, null, 2)}
 
-Yêu cầu định dạng đầu ra (Markdown Tiếng Việt, ngắn gọn, súc tích):
-1. Ưu điểm nổi bật của từng dòng (Dựa trên vật liệu, Spec, Độ dày).
-2. Ứng dụng phù hợp nhất (Phòng sạch, y tế, nhà xưởng, văn phòng...).
-3. Phân tích P/P (Price/Performance) và Đưa ra Lời khuyên cuối cùng (Khuyên dùng loại nào cho kịch bản nào).
-Hãy trả lời một cách cực kỳ chuyên nghiệp, chính xác và không bịa đặt dữ liệu ngoài JSON cung cấp.`;
+YÊU CẦU TRẢ LỜI CỤ THỂ 3 CÂU HỎI BẰNG TIẾNG VIỆT (Dùng Markdown):
+1. Cấu trúc bảng biểu So Sánh Các Thông số chi tiết (về Độ dày, Wear Layer, Công năng).
+2. TRẢ LỜI CHÍNH XÁC: Loại nào bền hơn? (Dựa vào Wear Layer, Độ dày và Công năng, Thương hiệu).
+3. TRẢ LỜI CHÍNH XÁC: Loại nào rẻ hơn / P-P Ngon hơn? (Rẻ hơn dựa theo [base_price], P-P Tốt dựa trên base_price thấp + pp_score cao).
+4. TRẢ LỜI CHÍNH XÁC: Nên dùng loại nào cho mặt bằng thực tế? (Dựa trên "Công năng" và "Category" của sản phẩm, VD: Sàn Y tế thì tư vấn dùng ở môi trường kháng khuẩn).
+
+Hãy trả lời một cách cực kỳ chuyên nghiệp, chính xác và sử dụng ngữ khí của một kỹ sư tư vấn cao cấp. Không bịa đặt dữ liệu ngoài JSON.`;
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: 'Hãy so sánh chi tiết các mẫu sàn này để tôi dễ dàng ra quyết định đầu tư.' }
+        { role: 'user', content: 'Vui lòng so sánh chi tiết các mã sàn đang chọn để tôi quyết định.' }
       ],
       model: 'llama3-70b-8192',
-      temperature: 0.2, // Low temp for analytical accuracy
+      temperature: 0.1, // Low temp for analytical accuracy
       max_tokens: 1536,
     });
 
