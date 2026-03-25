@@ -125,7 +125,7 @@ export default function AdminPage() {
       materials: prod.materials || "",
       pp_score: prod.pp_score || 5,
       colors: prod.colors || [],
-      images: prod.images || [],
+      images: (prod.images || []).map((img: any) => typeof img === 'string' ? { url: img, caption: "" } : img),
       installation_details: prod.installation_details || {},
       specs: prod.specs || {}
     });
