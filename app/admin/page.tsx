@@ -31,6 +31,7 @@ export default function AdminPage() {
   const [filterCategory, setFilterCategory] = useState("ALL");
   const [listCategory, setListCategory] = useState("Tất cả");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [colorInput, setColorInput] = useState("");
   
@@ -66,6 +67,7 @@ export default function AdminPage() {
 
     setUploadProgress({ current: 0, total: newFiles.length });
     setStatus("loading");
+    setIsUploading(true);
 
     try {
       let uploadedUrls: any[] = [];
@@ -90,9 +92,10 @@ export default function AdminPage() {
       console.error(err);
       setErrorMsg("Lỗi upload ảnh trực tiếp.");
       setStatus("error");
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
     }
-    
-    e.target.value = '';
   };
 
   const removeUploadedImage = (index: number) => {
@@ -344,12 +347,12 @@ export default function AdminPage() {
             <h2 className="text-xl font-black text-slate-800 dark:text-slate-200 flex items-center gap-2"><UploadCloud className="w-5 h-5 text-blue-600" /> Hình ảnh & Media (Immediate Upload)</h2>
             <p className="text-sm font-medium text-slate-500">Tối đa 50 hình ảnh. Các tệp sẽ được tải ngay lên Bucket `product-images` khi bạn chọn hình.</p>
             
-            <div className="border-3 border-dashed border-slate-300 dark:border-slate-700 rounded-[2rem] p-10 mt-4 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative cursor-pointer">
-              <input type="file" multiple accept="image/*" onChange={handleFileSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+            <div className={`border-3 border-dashed border-slate-300 dark:border-slate-700 rounded-[2rem] p-10 mt-4 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              <input type="file" multiple accept="image/*" onChange={handleFileSelect} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
               <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Plus className="w-8 h-8" />
+                {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <Plus className="w-8 h-8" />}
               </div>
-              <p className="font-bold text-slate-700 dark:text-slate-300 text-lg">Bấm để chọn nhiều ảnh hoặc Kéo thả vào đây</p>
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-lg">{isUploading ? "Đang tải ảnh lên máy chủ..." : "Bấm để chọn nhiều ảnh hoặc Kéo thả vào đây"}</p>
             </div>
 
             {formData.images.length > 0 && (
