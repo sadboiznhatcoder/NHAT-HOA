@@ -15,11 +15,10 @@ export async function POST(req: Request) {
 
     const sanitizedProducts = products.map((p: any) => ({
       name: p.name,
-      brand: p.brand,
-      category: p.category,
-      specs: p.specs,
-      pp_score: p.pp_score,
-      base_price: p.base_price
+      price: p.base_price,
+      thickness: p.specs?.["Độ dày"] || p.specs?.thickness,
+      wear_layer: p.specs?.["Lớp bảo vệ"] || p.specs?.wear_layer,
+      features: p.specs?.["Công năng"] || p.specs?.features
     }));
 
     const systemPrompt = `Bạn là Chuyên gia Tư vấn Vật liệu Sàn cấp cao của "Nhật Hoa ICT". Nhiệm vụ tối thượng của bạn là so sánh và trả lời chính xác 3 câu hỏi sau đối với dữ liệu các sản phẩm được cung cấp:
@@ -45,12 +44,9 @@ Hãy trả lời một cách cực kỳ chuyên nghiệp, chính xác và sử d
       max_tokens: 1536,
     });
 
-    return NextResponse.json({ reply: chatCompletion.choices[0]?.message?.content || '' });
+    return NextResponse.json({ result: chatCompletion.choices[0]?.message?.content || '' });
   } catch (error: any) {
-    if (error?.status === 429) {
-      return NextResponse.json({ error: "Hệ thống AI đang quá tải (Rate Limit). Vui lòng thử lại sau vài giây." }, { status: 429 });
-    }
     console.error('Groq Compare Error:', error);
-    return NextResponse.json({ error: 'Failed to process AI comparison request' }, { status: 500 });
+    return NextResponse.json({ error: "Có lỗi xảy ra từ máy chủ AI. Chi tiết: " + error.message }, { status: 500 });
   }
 }

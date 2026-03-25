@@ -188,13 +188,13 @@ export default function Home() {
         body: JSON.stringify({ products: compareList }),
       });
       const data = await res.json();
-      if (data.reply) {
-        setCompareResult(data.reply);
+      if (res.ok && data.result) {
+        setCompareResult(data.result);
       } else {
-        setCompareResult("Có lỗi xảy ra trong quá trình phân tích.");
+        setCompareResult(data.error || "Có lỗi xảy ra trong quá trình phân tích.");
       }
-    } catch (err) {
-      setCompareResult("Không thể kết nối với AI Engine. Vui lòng thử lại sau.");
+    } catch (err: any) {
+      setCompareResult("Lỗi kết nối AI: " + err.message);
     } finally {
       setIsComparing(false);
     }
@@ -477,19 +477,24 @@ export default function Home() {
                         <div className="w-20 h-20 rounded-full border-4 border-indigo-100 dark:border-indigo-900/50 border-t-indigo-600 dark:border-t-indigo-500 animate-spin"></div>
                         <Sparkles className="w-8 h-8 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                       </div>
-                      <h3 className="text-xl font-black text-slate-800 dark:text-slate-200">AI đang tính toán thông số Matrix...</h3>
-                      <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Phân tích giá thành, độ dày và lớp bảo vệ mài mòn.</p>
+                      <h3 className="text-xl font-black text-slate-800 dark:text-slate-200">Đang phân tích thông số bằng AI...</h3>
+                      <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">(Vui lòng đợi khoảng 5-10 giây)</p>
                     </div>
                   ) : (
                     <div className="flex flex-col h-full">
-                      <div className="prose prose-slate dark:prose-invert prose-indigo max-w-none prose-h1:text-2xl prose-h1:font-black prose-h3:text-indigo-600 dark:prose-h3:text-indigo-400 prose-li:font-medium">
-                        <ReactMarkdown>{compareResult}</ReactMarkdown>
-                      </div>
-                      {compareResult.toLowerCase().includes("lỗi") && (
-                        <div className="mt-8 flex justify-center">
-                           <button onClick={executeAiComparison} className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:scale-105">
-                              Thử Lại (Retry API)
-                           </button>
+                      {compareResult.toLowerCase().includes("lỗi") ? (
+                        <div className="mt-4 p-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 rounded-2xl flex flex-col items-center text-center">
+                           <p className="font-black text-red-600 dark:text-red-400 text-xl mb-3">Lỗi kết nối AI</p>
+                           <p className="font-medium text-red-500 dark:text-red-300">{compareResult}</p>
+                           <div className="mt-6">
+                              <button onClick={executeAiComparison} className="bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 px-10 rounded-full shadow-xl shadow-red-500/20 transition-transform hover:scale-105 active:scale-95">
+                                 Thử Lại (Retry API)
+                              </button>
+                           </div>
+                        </div>
+                      ) : (
+                        <div className="prose prose-slate dark:prose-invert prose-indigo max-w-none prose-h1:text-2xl prose-h1:font-black prose-h3:text-indigo-600 dark:prose-h3:text-indigo-400 prose-li:font-medium">
+                          <ReactMarkdown>{compareResult}</ReactMarkdown>
                         </div>
                       )}
                     </div>
