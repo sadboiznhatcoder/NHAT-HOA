@@ -1,24 +1,52 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Menu, X, Sparkles, Loader2, Info, Heart, Phone, MessageCircle, Clock, Sun, Moon, Filter, ShieldCheck, Settings } from "lucide-react";
+import { Search, Menu, X, Sparkles, Loader2, Heart, Phone, MessageCircle, Clock, Sun, Moon, Filter, ShieldCheck, Settings, Scale, Check, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { useTheme } from "next-themes";
 import { supabase } from "../lib/supabaseClient";
+import ReactMarkdown from "react-markdown";
+
+// Types
+type FilterState = {
+  thickness: string[];
+  wearLayer: string[];
+  type: string[];
+  colorTone: string[];
+  application: string[];
+};
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false); // Mobile Filter Drawer
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
+  // Search & Products State
   const [query, setQuery] = useState("");
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [aiResponse, setAiResponse] = useState("");
 
+  // Advanced Filters State
+  const [activeFilters, setActiveFilters] = useState<FilterState>({
+    thickness: [],
+    wearLayer: [],
+    type: [],
+    colorTone: [],
+    application: []
+  });
+
+  // LocalStorage Tracking
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
+
+  // AI Compare Engine States
+  const [compareList, setCompareList] = useState<any[]>([]);
+  const [isComparing, setIsComparing] = useState(false);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [compareResult, setCompareResult] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -29,7 +57,7 @@ export default function Home() {
     if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
 
     const loadRealData = async () => {
-        const { data } = await supabase.from('products').select('*');
+        const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
         if (data) setAllProducts(data);
     };
     loadRealData();
@@ -43,6 +71,7 @@ export default function Home() {
     setQuery(searchQuery);
     setLoading(true);
     setSearched(true);
+    setAiResponse("");
 
     if (!directQuery) {
         const newHistory = [searchQuery, ...searchHistory.filter(q => q !== searchQuery)].slice(0, 4);
@@ -57,11 +86,37 @@ export default function Home() {
         body: JSON.stringify({ query: searchQuery, activeContext: allProducts }),
       });
       const data = await res.json();
+      if (data.reply) setAiResponse(data.reply);
       setResults(data.results || []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const executeAiComparison = async () => {
+    if (compareList.length < 2) return;
+    setIsComparing(true);
+    setIsCompareModalOpen(true);
+    setCompareResult("");
+
+    try {
+      const res = await fetch("/api/ai-compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products: compareList }),
+      });
+      const data = await res.json();
+      if (data.reply) {
+        setCompareResult(data.reply);
+      } else {
+        setCompareResult("Có lỗi xảy ra trong quá trình phân tích.");
+      }
+    } catch (err) {
+      setCompareResult("Không thể kết nối với AI Engine. Vui lòng thử lại sau.");
+    } finally {
+      setIsComparing(false);
     }
   };
 
@@ -74,65 +129,131 @@ export default function Home() {
     localStorage.setItem("nhat_hoa_wishlist", JSON.stringify(newWishlist));
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+  const toggleCompare = (product: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const exists = compareList.find(p => p.id === product.id);
+    if (exists) {
+      setCompareList(prev => prev.filter(p => p.id !== product.id));
+    } else {
+      if (compareList.length >= 3) {
+        alert("Chỉ so sánh tối đa 3 sản phẩm cùng lúc để đảm bảo độ chính xác!");
+        return;
+      }
+      setCompareList(prev => [...prev, product]);
+    }
+  };
+
+  const handleFilterToggle = (category: keyof FilterState, value: string) => {
+    setActiveFilters(prev => {
+      const current = prev[category] || [];
+      if (current.includes(value)) {
+        return { ...prev, [category]: current.filter(v => v !== value) };
+      } else {
+        return { ...prev, [category]: [...current, value] };
+      }
+    });
+  };
+
+  // Process data locally through Faceted Filters
+  const processedList = (searched && results.length > 0 ? results : allProducts).filter(p => {
+    // Stringified spec dictionary to easily run text-inclusions
+    const specsDump = JSON.stringify(p.specs || {}).toLowerCase() + " " + (p.description || "").toLowerCase() + " " + (p.name || "").toLowerCase() + " " + (p.category || "").toLowerCase();
+    
+    // Thickness
+    if (activeFilters.thickness.length > 0) {
+      if (!activeFilters.thickness.some(th => specsDump.includes(th.toLowerCase()))) return false;
+    }
+    // Wear Layer
+    if (activeFilters.wearLayer.length > 0) {
+      if (!activeFilters.wearLayer.some(wl => specsDump.includes(wl.toLowerCase()))) return false;
+    }
+    // Floor Type
+    if (activeFilters.type.length > 0) {
+      if (!activeFilters.type.some(t => {
+        if (t === 'Sàn cuộn') return specsDump.includes('roll') || specsDump.includes('cuộn');
+        if (t === 'Sàn tấm') return specsDump.includes('tile') || specsDump.includes('tấm');
+        if (t === 'Sàn thanh') return specsDump.includes('plank') || specsDump.includes('thanh');
+        if (t === 'Sàn hèm khóa') return specsDump.includes('spc') || specsDump.includes('hèm');
+        return specsDump.includes(t.toLowerCase());
+      })) return false;
+    }
+    // App
+    if (activeFilters.application.length > 0) {
+      if (!activeFilters.application.some(app => specsDump.includes(app.toLowerCase()))) return false;
+    }
+
+    return true;
+  });
+
+  const clearFilters = () => {
+    setActiveFilters({ thickness: [], wearLayer: [], type: [], colorTone: [], application: [] });
+  };
+
+  const getActiveFilterCount = () => {
+    return Object.values(activeFilters).reduce((acc, curr) => acc + curr.length, 0);
   };
 
   if (!mounted) return null;
+
+  // Static Filter Options
+  const staticFilters = [
+    { title: "Độ dày (Thickness)", key: "thickness" as keyof FilterState, options: ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm"] },
+    { title: "Lớp bảo vệ (Wear Layer)", key: "wearLayer" as keyof FilterState, options: ["0.1mm", "0.3mm", "0.5mm", "0.7mm"] },
+    { title: "Cấu trúc Sàn", key: "type" as keyof FilterState, options: ["Sàn cuộn", "Sàn tấm", "Sàn thanh", "Sàn hèm khóa"] },
+    { title: "Công Năng Nổi Bật", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao", "Sàn thể thao"] }
+  ];
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-blue-300 dark:selection:bg-blue-900 transition-colors">
       
       {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 md:h-20">
-            <div className="flex-shrink-0 flex items-center gap-3 cursor-pointer group">
+            <div className="flex-shrink-0 flex items-center gap-3 cursor-pointer group" onClick={() => { setSearched(false); setQuery(""); clearFilters(); }}>
               <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 dark:bg-blue-500 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/30 group-hover:scale-105 transition-transform">
                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">NHẬT HOA ICT</span>
             </div>
             
-            {/* Desktop Nav */}
             <nav className="hidden md:flex space-x-8 items-center">
-              <a href="#" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors">Thư viện sàn</a>
-              <a href="#" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors flex items-center gap-1.5">
-                <Heart className="w-4 h-4" /> Yêu thích {wishlist.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{wishlist.length}</span>}
-              </a>
+              <button onClick={() => { setSearched(false); setQuery(""); }} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors">
+                Trang Chủ Thư Viện
+              </button>
+              <button className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors flex items-center gap-1.5">
+                <Heart className="w-4 h-4 text-red-500" /> Wishlist {wishlist.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{wishlist.length}</span>}
+              </button>
               <a href="/admin" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800">
-                <Settings className="w-4 h-4" /> Quản lý
+                <Settings className="w-4 h-4" /> CMS Portal
               </a>
               
-              <button onClick={toggleTheme} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
+
+              <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
+                {theme === "dark" ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-blue-600" />}
               </button>
             </nav>
 
-            {/* Mobile Menu Buttons */}
             <div className="flex md:hidden items-center gap-3">
-              <button onClick={toggleTheme} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                {theme === "dark" ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-blue-600" />}
               </button>
-              <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)} 
-                className="p-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl transition-colors"
-              >
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl">
                 {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Nav Dropdown */}
         {isMenuOpen && (
           <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 absolute w-full shadow-2xl animate-in fade-in slide-in-from-top-4">
             <div className="px-5 py-4 space-y-2">
-              <a href="#" className="block px-4 py-3 rounded-xl text-base font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">Thư viện sàn</a>
-              <a href="#" className="flex justify-between px-4 py-3 rounded-xl text-base font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+              <button onClick={() => { setIsMenuOpen(false); setSearched(false); }} className="w-full text-left px-4 py-3 rounded-xl text-base font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">Cửa hàng trung tâm</button>
+              <button className="flex justify-between w-full px-4 py-3 rounded-xl text-base font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                 Yêu thích {wishlist.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{wishlist.length}</span>}
-              </a>
-              <a href="/admin" className="block px-4 py-3 rounded-xl text-base font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/30">Quản lý / Đăng bài</a>
+              </button>
+              <a href="/admin" className="block w-full px-4 py-3 rounded-xl text-base font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/30">Quản trị CMS</a>
             </div>
           </div>
         )}
@@ -140,90 +261,163 @@ export default function Home() {
 
       {/* FILTER DRAWER FOR MOBILE */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[60] flex md:hidden animate-in fade-in">
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-[60] flex lg:hidden animate-in fade-in">
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsFilterOpen(false)}></div>
-          {/* Drawer */}
-          <div className="relative w-4/5 max-w-sm h-full bg-white dark:bg-slate-900 shadow-2xl p-6 flex flex-col animate-in slide-in-from-left-full">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5" /> Bộ Lọc</h2>
-              <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><X className="w-5 h-5 text-slate-600 dark:text-slate-300" /></button>
+          <div className="relative w-4/5 max-w-sm h-full bg-slate-50 dark:bg-slate-950 shadow-2xl flex flex-col animate-in slide-in-from-left-full border-r border-slate-200 dark:border-slate-800">
+            <div className="p-5 flex justify-between items-center bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Filter className="w-5 h-5 text-blue-600" />
+                Bộ Lọc 
+                {getActiveFilterCount() > 0 && <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">{getActiveFilterCount()}</span>}
+              </h2>
+              <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"><X className="w-5 h-5 text-slate-600 dark:text-slate-300" /></button>
             </div>
             
-            <div className="space-y-6 flex-1 overflow-y-auto">
-              <div>
-                <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Ứng Dụng</h3>
-                <div className="space-y-2">
-                  {['Phòng sạch', 'Bệnh viện', 'Trường học', 'Nhà máy'].map(cat => (
-                    <label key={cat} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-800" />
-                      {cat}
-                    </label>
-                  ))}
-                </div>
-              </div>
+            <div className="px-5 py-6 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
+              {getActiveFilterCount() > 0 && (
+                <button onClick={clearFilters} className="w-full py-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800/50">
+                  Xóa Lọc Hiện Ở ({getActiveFilterCount()} Lựa Chọn)
+                </button>
+              )}
 
-              <div>
-                <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Độ Dày</h3>
-                <div className="space-y-2">
-                  {['2.0mm', '3.0mm', '5.0mm', '6.5mm'].map(th => (
-                    <label key={th} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-800" />
-                      {th}
-                    </label>
-                  ))}
+              {staticFilters.map(filterBlock => (
+                <div key={filterBlock.title}>
+                  <h3 className="text-[13px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">{filterBlock.title}</h3>
+                  <div className="space-y-2">
+                    {filterBlock.options.map(opt => {
+                      const isActive = activeFilters[filterBlock.key].includes(opt);
+                      return (
+                        <label key={opt} className={`flex items-center gap-3 p-3 rounded-xl border ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'} font-bold cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors`}>
+                          <input type="checkbox" checked={isActive} onChange={() => handleFilterToggle(filterBlock.key, opt)} className="hidden" />
+                          <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${isActive ? 'border-blue-600 bg-blue-600' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'}`}>
+                            {isActive && <Check className="w-3.5 h-3.5 text-white" />}
+                          </div>
+                          <span className="text-[15px]">{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
 
-            <button onClick={() => setIsFilterOpen(false)} className="mt-6 w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg">
-              Áp Dụng Lọc
-            </button>
+            <div className="p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+               <button onClick={() => setIsFilterOpen(false)} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-500/30 transition-shadow">
+                 Xem {processedList.length} Kết Quả
+               </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
-        {/* Mobile Filter Button */}
-        <button onClick={() => setIsFilterOpen(true)} className="md:hidden w-14 h-14 bg-slate-800 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110">
+      <div className="fixed bottom-6 right-6 z-30 flex flex-col gap-3">
+        {/* So sánh AI Nhanh Button (Visible if items selected) */}
+        {compareList.length > 0 && (
+          <button onClick={executeAiComparison} className="lg:hidden absolute bottom-[130px] -right-2 w-max px-6 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full shadow-2xl flex items-center justify-center font-black animate-in slide-in-from-bottom-5">
+            <Scale className="w-6 h-6 mr-2" /> So Sánh ({compareList.length}/3)
+          </button>
+        )}
+
+        <button onClick={() => setIsFilterOpen(true)} className="lg:hidden w-14 h-14 bg-slate-800 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 border border-slate-700 dark:border-slate-200 relative">
           <Filter className="w-6 h-6" />
+          {getActiveFilterCount() > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 bg-blue-600 rounded-full border-2 border-slate-800 dark:border-white items-center justify-center text-[10px] font-bold text-white">
+              {getActiveFilterCount()}
+            </span>
+          )}
         </button>
-        <button className="w-14 h-14 bg-sky-500 text-white rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-110">
+        <button className="w-14 h-14 bg-emerald-500 text-white rounded-full shadow-xl shadow-emerald-500/20 flex items-center justify-center transition-transform hover:scale-110">
           <MessageCircle className="w-6 h-6" />
-        </button>
-        <button className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl shadow-blue-600/30 flex items-center justify-center transition-transform hover:scale-110 animate-bounce">
-          <Phone className="w-6 h-6" />
         </button>
       </div>
 
-      <main className="flex-1 flex flex-col">
-        {/* Responsive Centered Search Bar Section */}
+      <main className="flex-1 flex flex-col relative z-10 transition-colors">
+        {/* Dynamic Compare Widget Float (Desktop) */}
+        {compareList.length > 0 && (
+          <div className="hidden lg:flex fixed bottom-8 left-1/2 -translate-x-1/2 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/50 shadow-2xl shadow-indigo-500/20 rounded-full pl-6 pr-3 py-3 items-center gap-6 animate-in slide-in-from-bottom-10">
+            <div className="flex -space-x-3">
+               {compareList.map((c, i) => (
+                 <div key={i} className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 overflow-hidden relative group cursor-pointer" onClick={(e) => toggleCompare(c, e)}>
+                    <img src={c.images?.[0] || 'https://via.placeholder.com/100'} className="w-full h-full object-cover group-hover:blur-sm transition-all" />
+                    <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-4 h-4 text-white" /></div>
+                 </div>
+               ))}
+               {compareList.length < 3 && (
+                 <div className="w-10 h-10 rounded-full border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center z-[-1]">
+                    <Plus className="w-4 h-4 text-indigo-400" />
+                 </div>
+               )}
+            </div>
+            <div>
+               <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">Đang chọn <span className="text-indigo-600 dark:text-indigo-400 font-black">{compareList.length}</span> sản phẩm</p>
+               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Có thể đối chiếu hệ số P/P tự động</p>
+            </div>
+            <button onClick={executeAiComparison} className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-black px-6 py-3 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105">
+               <Sparkles className="w-5 h-5 fill-white/20" /> Matrix Comparison
+            </button>
+          </div>
+        )}
+
+        {/* AI Compare Matrix Modal */}
+        {isCompareModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 animate-in fade-in bg-slate-900/60 backdrop-blur-md">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in zoom-in-95">
+               <div className="p-6 sm:p-8 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border-b border-indigo-100 dark:border-indigo-900/50 flex justify-between items-start shrink-0">
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 flex items-center gap-3">
+                      <Scale className="w-8 h-8 text-indigo-500" /> Bản báo cáo Khuyên Dùng
+                    </h2>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium mt-2">Dựa trên cơ sở dữ liệu kỹ thuật và LLM Llama-3 (Groq Hardware)</p>
+                  </div>
+                  <button onClick={() => setIsCompareModalOpen(false)} className="p-2 bg-white dark:bg-slate-800 rounded-full shadow-sm hover:scale-110 transition-transform"><X className="w-6 h-6 text-slate-500" /></button>
+               </div>
+               <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/50 dark:bg-slate-950/50">
+                  {isComparing ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                      <div className="relative mb-6">
+                        <div className="w-20 h-20 rounded-full border-4 border-indigo-100 dark:border-indigo-900/50 border-t-indigo-600 dark:border-t-indigo-500 animate-spin"></div>
+                        <Sparkles className="w-8 h-8 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-800 dark:text-slate-200">AI đang tính toán thông số Matrix...</h3>
+                      <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Phân tích giá thành, độ dày và lớp bảo vệ mài mòn.</p>
+                    </div>
+                  ) : (
+                    <div className="prose prose-slate dark:prose-invert prose-indigo max-w-none prose-h1:text-2xl prose-h1:font-black prose-h3:text-indigo-600 dark:prose-h3:text-indigo-400 prose-li:font-medium">
+                      <ReactMarkdown>{compareResult}</ReactMarkdown>
+                    </div>
+                  )}
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Responsive Centered Search Bar */}
         <section className="bg-white dark:bg-slate-900 px-4 py-12 md:py-20 border-b border-slate-200 dark:border-slate-800 relative overflow-hidden transition-colors">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-64 bg-blue-400/10 dark:bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
           
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-              Khám phá giải pháp sàn <br className="md:hidden" />
-              <span className="text-blue-600 dark:text-blue-500 inline-flex items-center gap-2">bằng AI <Sparkles className="w-8 h-8 text-blue-500 animate-pulse" /></span>
+              Khám phá hệ vật liệu <br className="md:hidden" />
+              <span className="text-blue-600 dark:text-blue-500 inline-flex items-center gap-2">Siêu tốc bằng AI <Sparkles className="w-8 h-8 text-blue-500 animate-pulse" /></span>
             </h1>
 
             <form onSubmit={(e) => handleSearch(e)} className="mt-8 max-w-2xl mx-auto relative group">
               <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-500" />
+                <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
               </div>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="VD: Tìm kiếm sàn gỗ, sàn nhựa, phòng sạch..."
-                className="block w-full pl-14 pr-24 sm:pr-36 py-4 sm:py-5 border-2 border-slate-200 dark:border-slate-800 rounded-full bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 font-medium text-base sm:text-lg transition-all shadow-lg shadow-slate-200/50 dark:shadow-none"
+                placeholder="VD: Tìm sàn cuộn bệnh viện, chống tĩnh điện 3mm..."
+                className="block w-full pl-14 pr-24 sm:pr-36 py-4 sm:py-5 border-2 border-slate-200 dark:border-slate-800 rounded-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 font-bold text-base sm:text-lg transition-all shadow-xl shadow-slate-200/50 dark:shadow-none"
               />
               <div className="absolute inset-y-0 right-2 sm:right-2.5 flex items-center">
                 <button
                   type="submit"
                   disabled={loading || !query.trim()}
-                  className="px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-full text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 dark:disabled:bg-blue-900 font-black shadow-md flex items-center gap-2 transition-colors"
+                  className="px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-full text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 dark:disabled:bg-blue-900 font-black shadow-md flex items-center gap-2 transition-colors disabled:opacity-70"
                 >
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Tư vấn <span className="hidden sm:inline">ngay</span></>}
                 </button>
@@ -231,12 +425,12 @@ export default function Home() {
             </form>
 
             {searchHistory.length > 0 && !loading && (
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                <span className="text-xs font-bold text-slate-400 flex items-center gap-1 uppercase tracking-wider">
-                  <Clock className="w-3.5 h-3.5" /> Gợi ý:
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+                  <Clock className="w-4 h-4" /> Tra cứu:
                 </span>
                 {searchHistory.map((item, i) => (
-                  <button key={i} onClick={() => handleSearch(undefined, item)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-bold rounded-full transition-colors border border-slate-200 dark:border-slate-700">
+                  <button key={i} onClick={() => handleSearch(undefined, item)} className="px-4 py-2 bg-white dark:bg-slate-950 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-full transition-colors shadow-sm">
                     {item}
                   </button>
                 ))}
@@ -245,83 +439,160 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Sidebar & Grid Layout */}
+        {/* Main Grid Layout */}
         <section className="flex-1 bg-slate-50 dark:bg-slate-950 py-12 px-4 sm:px-6 lg:px-8 transition-colors">
-          <div className="max-w-[1400px] mx-auto flex gap-8">
+          <div className="max-w-[1440px] mx-auto flex gap-8">
             
-            {/* Desktop Fixed Sidebar */}
-            <aside className="hidden md:block w-72 shrink-0 space-y-8">
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2"><Filter className="w-5 h-5 text-blue-600" /> Bộ Lọc Cố Định</h2>
+            {/* Desktop Dynamic Sidebar */}
+            <aside className="hidden lg:block w-72 shrink-0 space-y-6">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-6">
+                   <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5 text-blue-600" /> Bảng Phân Cấp</h2>
+                   {getActiveFilterCount() > 0 && (
+                     <button onClick={clearFilters} className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 rounded-full transition-colors">Xóa ({getActiveFilterCount()})</button>
+                   )}
+                </div>
                 
-                <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Ứng Dụng</h3>
-                <div className="space-y-3 mb-8">
-                  {['Sàn thao tác', 'Phòng kỹ thuật', 'Khu chế xuất', 'Giáo dục'].map(cat => (
-                    <label key={cat} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 bg-slate-100 dark:bg-slate-800" />
-                      {cat}
-                    </label>
+                <div className="space-y-8">
+                  {staticFilters.map(filterBlock => (
+                     <div key={filterBlock.title} className="border-t border-slate-100 dark:border-slate-800 pt-5 mt-5 first:border-0 first:pt-0 first:mt-0">
+                       <h3 className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                         {filterBlock.title} <ChevronDown className="w-4 h-4 text-slate-400" />
+                       </h3>
+                       <div className="space-y-2.5">
+                         {filterBlock.options.map(opt => {
+                           const isActive = activeFilters[filterBlock.key].includes(opt);
+                           return (
+                             <label key={opt} className={`flex items-center gap-3 text-[14px] font-bold cursor-pointer group transition-colors ${isActive ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400'}`}>
+                               <div className={`w-5 h-5 rounded-[6px] flex items-center justify-center border-2 transition-colors ${isActive ? 'border-blue-600 bg-blue-600 shadow-sm' : 'border-slate-300 dark:border-slate-700 group-hover:border-blue-400 dark:bg-slate-900'}`}>
+                                 {isActive && <Check className="w-3.5 h-3.5 text-white" />}
+                               </div>
+                               {opt}
+                             </label>
+                           );
+                         })}
+                       </div>
+                     </div>
                   ))}
                 </div>
+              </div>
 
-                <button className="w-full py-3.5 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
-                  Áp Dụng Tiêu Chí
-                </button>
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-600/20">
+                 <Sparkles className="w-8 h-8 text-blue-200 mb-4" />
+                 <h3 className="text-xl font-black mb-2">Chưa phân tích được?</h3>
+                 <p className="text-blue-100 text-sm font-medium mb-4">Sử dụng công cụ chọn ở từng thẻ sản phẩm để AI đối chiếu chéo cấu trúc giá và mài mòn.</p>
               </div>
             </aside>
 
-            {/* Product Grid Area */}
+            {/* Product Grid Layout */}
             <div className="flex-1">
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-24 text-slate-500 dark:text-slate-400">
-                  <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
-                  <p className="font-extrabold text-xl text-slate-800 dark:text-slate-200">Hệ thống đang trích xuất kho...</p>
+                <div className="flex flex-col items-center justify-center py-32 text-slate-500 dark:text-slate-400">
+                  <div className="relative">
+                     <div className="w-20 h-20 rounded-full border-4 border-slate-200 dark:border-slate-800 border-t-blue-600 dark:border-t-blue-500 animate-spin"></div>
+                     <Search className="w-8 h-8 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <p className="font-extrabold text-xl text-slate-800 dark:text-slate-200 mt-6">Groq AI đang truy quét CSDL...</p>
+                  <p className="text-slate-500 font-medium mt-2">Giao tốc độ lên đến 800 tokens/s dành riêng cho bạn</p>
                 </div>
-              ) : (searched && results.length > 0) || allProducts.length > 0 ? (
+              ) : processedList.length > 0 ? (
                 <>
-                  <div className="mb-6 flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">Danh Mục Sản Phẩm</h2>
-                    <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 text-sm font-bold px-4 py-1.5 rounded-full">
-                      {(searched ? results : allProducts).length} Kết quả
-                    </span>
+                  {/* AI CONVERSATION RESPONSE BLOCK */}
+                  {aiResponse && (
+                    <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[2rem] p-6 sm:p-8 border border-blue-100 dark:border-blue-900/50 shadow-sm animate-in zoom-in-95">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                          <Sparkles className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                           <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Trợ Lý Dữ Liệu Nhật Hoa</h2>
+                           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Giá trị cốt lõi • Phân tích Realtime</p>
+                        </div>
+                      </div>
+                      <div className="prose prose-slate dark:prose-invert prose-indigo max-w-none prose-p:font-medium prose-p:leading-relaxed prose-img:rounded-xl prose-img:shadow-md prose-img:max-h-64 prose-img:object-cover prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-headings:text-slate-800 dark:prose-headings:text-slate-200">
+                        <ReactMarkdown>{aiResponse}</ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-900 px-6 py-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 gap-4">
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                      Lưới Sản Phẩm
+                      {searched && <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-sm font-bold rounded-full border border-amber-200 dark:border-amber-800/50">Truy vấn AI</span>}
+                    </h2>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 text-sm font-bold px-4 py-2 rounded-xl flex items-center gap-2 border border-slate-200 dark:border-slate-800">
+                        Phân vùng: <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-xs">{processedList.length} Items</span>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {(searched ? results : allProducts).map((product, idx) => {
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 pb-32">
+                    {processedList.map((product, idx) => {
                       const isLiked = wishlist.includes(product.id);
-                      return (
-                        <div key={idx} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-2xl dark:hover:shadow-blue-900/20 hover:border-blue-300 dark:hover:border-blue-700 transition-all group overflow-hidden flex flex-col relative">
-                          <button onClick={(e) => toggleWishlist(product.id, e)} className="absolute z-10 top-4 right-4 p-2.5 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-md hover:scale-110 transition-transform hidden sm:block">
-                            <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                          </button>
+                      const isComparing = compareList.find(p => p.id === product.id);
 
-                          <div className="aspect-[4/3] relative bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      return (
+                        <div key={idx} className={`bg-white dark:bg-slate-900 rounded-[2rem] border-2 shadow-sm transition-all group overflow-hidden flex flex-col relative ${isComparing ? 'border-indigo-500 dark:border-indigo-500 shadow-indigo-500/20 shadow-xl scale-[1.02]' : 'border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-2xl'}`}>
+                          
+                          {/* Toolbars in Photo */}
+                          <div className="absolute z-10 top-4 right-4 flex flex-col gap-2">
+                            <button onClick={(e) => toggleWishlist(product.id, e)} className="p-3 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg hover:scale-110 transition-transform">
+                              <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
+                            </button>
+                            <button 
+                              onClick={(e) => toggleCompare(product, e)} 
+                              className={`p-3 rounded-full backdrop-blur-md shadow-lg transition-all hover:scale-110 ${isComparing ? 'bg-indigo-600 text-white' : 'bg-white/90 dark:bg-slate-900/90 text-slate-400 dark:text-slate-500'}`}
+                              title="Đưa vào khối Compare"
+                            >
+                              <Scale className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          {/* Image Container */}
+                          <div className="aspect-[4/3] relative bg-slate-100 dark:bg-slate-800 overflow-hidden cursor-pointer">
                             <img
-                              src={product.images?.[0] || product.image || 'https://via.placeholder.com/400'}
+                              src={product.images?.[0] || product.image || 'https://images.unsplash.com/photo-1581428982868-e410dd147b9d?q=80&w=800&auto=format&fit=crop'}
                               alt={product.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                              className={`w-full h-full object-cover transition-transform duration-700 ${isComparing ? 'scale-105 opacity-90' : 'group-hover:scale-110'}`}
                             />
-                            <div className="absolute bottom-4 left-4 flex gap-2">
-                              <span className="px-3 py-1.5 text-[11px] font-black uppercase tracking-wide bg-slate-900/80 dark:bg-black/80 backdrop-blur-md text-white rounded-lg shadow-sm">
-                                {product.category || 'Vật tư'}
-                              </span>
+                            <div className="absolute bottom-4 left-4 flex gap-2 w-[calc(100%-2rem)] flex-wrap">
+                               <span className="px-3 py-1.5 text-[11px] font-black uppercase tracking-wide bg-blue-600/90 backdrop-blur-md text-white rounded-lg shadow-sm border border-blue-500/50">
+                                 {product.category || 'Vật tư'}
+                               </span>
+                               {product.pp_score && (
+                                 <span className="px-3 py-1.5 text-[11px] font-black uppercase tracking-wide bg-emerald-500/90 backdrop-blur-md text-white rounded-lg shadow-sm border border-emerald-400/50 flex items-center gap-1">
+                                   P/P: {product.pp_score}
+                                 </span>
+                               )}
                             </div>
                           </div>
 
-                          <div className="p-6 flex flex-col flex-1">
-                            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white leading-snug mb-2 line-clamp-2">
+                          {/* Content Data */}
+                          <div className="p-6 flex flex-col flex-1 cursor-pointer">
+                            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white leading-snug mb-3 line-clamp-2">
                               {product.name}
                             </h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2 font-medium">
+                            
+                            <div className="flex flex-wrap gap-2 mb-4">
+                               {product.specs?.['Độ dày'] && <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold rounded-md border border-slate-200 dark:border-slate-700">Dày {product.specs['Độ dày']}</span>}
+                               {product.specs?.['Lớp bảo vệ'] && <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold rounded-md border border-slate-200 dark:border-slate-700">Wear {product.specs['Lớp bảo vệ']}</span>}
+                            </div>
+
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 line-clamp-2 font-medium">
                               {product.description || product.materials}
                             </p>
-                            <div className="mt-auto border-t border-slate-100 dark:border-slate-800 pt-5 flex justify-between items-end">
+
+                            <div className="mt-auto border-t-2 border-slate-100 dark:border-slate-800/50 pt-5 flex justify-between items-end">
                               <div>
-                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Đơn giá / m²</p>
-                                <p className="text-2xl font-black text-blue-600 dark:text-blue-400 leading-none">
+                                <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 group-hover:text-blue-500 transition-colors">Báo giá cơ bản</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.base_price || product.price)}
                                 </p>
                               </div>
+                              <button className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white text-slate-400 transition-all shadow-sm">
+                                <ChevronRight className="w-5 h-5" />
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -330,10 +601,13 @@ export default function Home() {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 border-dashed">
-                  <ShieldCheck className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                  <p className="text-2xl font-extrabold text-slate-700 dark:text-slate-300">Hệ thống đang chạy trống</p>
-                  <p className="text-slate-500 mt-2 font-medium">Vui lòng truy cập trang Quản lý để bắt đầu đăng sản phẩm thực.</p>
+                <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 border-dashed">
+                  <div className="w-20 h-20 bg-slate-50 dark:bg-slate-950 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <ShieldCheck className="w-10 h-10 text-slate-400 dark:text-slate-600" />
+                  </div>
+                  <p className="text-2xl font-black text-slate-800 dark:text-slate-200">Không tìm thấy mã sàn phù hợp</p>
+                  <p className="text-slate-500 dark:text-slate-400 mt-3 font-medium max-w-sm mx-auto">Thử hạ bớt tiêu chí trong Bảng Phân Cấp hoặc thay đổi truy vấn AI của bạn.</p>
+                  <button onClick={clearFilters} className="mt-8 px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:scale-105 transition-transform">Xóa Bộ Lọc</button>
                 </div>
               )}
             </div>
