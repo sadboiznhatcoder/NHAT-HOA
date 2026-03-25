@@ -97,6 +97,8 @@ export default function Home() {
   const [isComparing, setIsComparing] = useState(false);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [compareResult, setCompareResult] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [activeThumb, setActiveThumb] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -605,7 +607,7 @@ export default function Home() {
                             </button>
                           </div>
 
-                          <div className="aspect-[4/3] relative bg-slate-100 dark:bg-slate-800 overflow-hidden cursor-pointer">
+                          <div onClick={() => { setSelectedProduct(product); setActiveThumb(0); }} className="aspect-[4/3] relative bg-slate-100 dark:bg-slate-800 overflow-hidden cursor-pointer">
                             <img
                               src={primaryImageUrl || product.image || 'https://via.placeholder.com/800x600?text=No+Image'}
                               alt={product.name}
@@ -632,7 +634,7 @@ export default function Home() {
                             </div>
                           </div>
 
-                          <div className="p-6 flex flex-col flex-1 cursor-pointer">
+                          <div onClick={() => { setSelectedProduct(product); setActiveThumb(0); }} className="p-6 flex flex-col flex-1 cursor-pointer">
                             <h3 className="text-xl font-extrabold text-slate-900 dark:text-white leading-snug mb-3 line-clamp-2">
                               {product.name}
                             </h3>
@@ -681,6 +683,114 @@ export default function Home() {
           </div>
         </section>
       </main>
+
+      {/* === PRODUCT QUICK-VIEW MODAL === */}
+      {selectedProduct && (() => {
+        const p = selectedProduct;
+        const imgs = (p.images || []).map((im: any) => typeof im === 'string' ? { url: im, caption: '' } : im);
+        const activeImg = imgs[activeThumb] || { url: p.image || 'https://via.placeholder.com/800x600?text=No+Image', caption: '' };
+        const specs = p.specs || {};
+        const featureList = (specs['Công năng'] || '').split(',').map((f: string) => f.trim()).filter(Boolean);
+        return (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedProduct(null)}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div onClick={(e) => e.stopPropagation()} className="relative bg-white dark:bg-slate-900 w-full max-w-6xl max-h-[92vh] rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+
+              {/* Close Button */}
+              <button onClick={() => setSelectedProduct(null)} className="absolute top-5 right-5 z-50 p-2.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-full shadow-lg hover:scale-110 transition-transform border border-slate-200 dark:border-slate-700">
+                <X className="w-6 h-6 text-slate-700 dark:text-slate-300" />
+              </button>
+
+              <div className="overflow-y-auto custom-scrollbar flex-1">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
+
+                  {/* LEFT: Media Gallery (2/5) */}
+                  <div className="lg:col-span-2 bg-slate-50 dark:bg-slate-950 p-6 sm:p-8">
+                    <div className="aspect-square rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-inner">
+                      <img src={activeImg.url} alt={p.name} className="w-full h-full object-cover" />
+                    </div>
+                    {activeImg.caption && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Mã màu: <span className="text-blue-600 dark:text-blue-400">{activeImg.caption}</span></span>
+                      </div>
+                    )}
+                    {imgs.length > 1 && (
+                      <div className="grid grid-cols-5 gap-2 mt-4">
+                        {imgs.map((im: any, i: number) => (
+                          <button key={i} onClick={() => setActiveThumb(i)} className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${i === activeThumb ? 'border-blue-600 ring-2 ring-blue-600/30 scale-105' : 'border-slate-200 dark:border-slate-700 opacity-70 hover:opacity-100'}`}>
+                            <img src={im.url} alt="" className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* RIGHT: Product Info (3/5) */}
+                  <div className="lg:col-span-3 p-6 sm:p-8 flex flex-col gap-6">
+                    {/* Header */}
+                    <div>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {p.brand && <span className="px-3 py-1 bg-blue-600 text-white text-xs font-black rounded-lg uppercase tracking-wide">{p.brand}</span>}
+                        {p.category && <span className="px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg">{p.category}</span>}
+                        {specs?.['Hạng mục con'] && <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-bold rounded-lg">{specs['Hạng mục con']}</span>}
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">{p.name}</h2>
+                    </div>
+
+                    {/* Price & P/P */}
+                    <div className="flex items-end gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Báo giá cơ bản</p>
+                        <p className="text-3xl font-black text-blue-600 dark:text-blue-400">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.base_price || p.price || 0)}</p>
+                      </div>
+                      {p.pp_score && (
+                        <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl">
+                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">P/P Score</p>
+                          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{p.pp_score}/10</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Specs Grid */}
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">Thông số kỹ thuật</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[{l: 'Độ dày', v: specs['Độ dày']}, {l: 'Lớp bảo vệ', v: specs['Lớp bảo vệ']}, {l: 'Cấu trúc', v: specs['Cấu trúc']}, {l: 'Kiểu lắp đặt', v: specs['Kiểu lắp đặt'] || p.installation_details?.['Kiểu lắp đặt']}].filter(s => s.v).map(s => (
+                          <div key={s.l} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{s.l}</p>
+                            <p className="text-base font-black text-slate-900 dark:text-white">{s.v}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Features Chips */}
+                    {featureList.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">Công năng nổi bật</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {featureList.map((f: string) => (
+                            <span key={f} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-sm font-bold rounded-full border border-blue-200 dark:border-blue-800/50">{f}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    {(p.materials || p.description) && (
+                      <div>
+                        <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">Mô tả chi tiết</h3>
+                        <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{p.materials || p.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
