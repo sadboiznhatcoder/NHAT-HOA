@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { Save, Plus, Trash2, CheckCircle2, AlertCircle, LayoutDashboard, Settings, X, UploadCloud, FileText } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Save, Plus, Trash2, CheckCircle2, AlertCircle, LayoutDashboard, Settings, X, UploadCloud, FileText, Loader2 } from "lucide-react";
 
 export default function AdminPage() {
   const [formData, setFormData] = useState({
@@ -23,11 +22,58 @@ export default function AdminPage() {
   const [imageInput, setImageInput] = useState("");
   const [specKey, setSpecKey] = useState("");
   const [specValue, setSpecValue] = useState("");
-  const [installKey, setInstallKey] = useState("");
-  const [installValue, setInstallValue] = useState("");
   
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Storage Upload States
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    // Giới hạn max 50 ảnh
+    const files = Array.from(e.target.files).slice(0, 50);
+    setIsUploading(true);
+    setUploadProgress({ current: 0, total: files.length });
+
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const filePath = `uploads/${fileName}`;
+
+      // Upload directly to Supabase Storage Bucket 'product-images'
+      const { data, error } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Lỗi tải ảnh:', error);
+      } else if (data) {
+        // Lấy Public URL
+        const { data: publicData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+        
+        uploadedUrls.push(publicData.publicUrl);
+      }
+      
+      setUploadProgress({ current: i + 1, total: files.length });
+    }
+
+    setFormData(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
+    setIsUploading(false);
+    
+    // Reset input
+    e.target.value = '';
+  };
 
   const handleArrayAdd = (
     e: React.KeyboardEvent | React.MouseEvent,
@@ -99,6 +145,10 @@ export default function AdminPage() {
     }
   };
 
+  const progressPercentage = uploadProgress.total > 0 
+    ? Math.round((uploadProgress.current / uploadProgress.total) * 100) 
+    : 0;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4 sm:px-6 lg:px-8 font-sans transition-colors">
       <div className="max-w-5xl mx-auto">
@@ -120,13 +170,13 @@ export default function AdminPage() {
         </div>
 
         {status === "success" && (
-          <div className="mb-8 p-5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl flex items-center gap-3 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm">
+          <div className="mb-8 p-5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl flex items-center gap-3 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm animate-in fade-in">
             <CheckCircle2 className="w-6 h-6" /> Đã lưu hồ sơ sản phẩm an toàn!
           </div>
         )}
 
         {status === "error" && (
-          <div className="mb-8 p-5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-2xl flex items-center gap-3 text-red-700 dark:text-red-400 font-bold shadow-sm">
+          <div className="mb-8 p-5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-2xl flex items-center gap-3 text-red-700 dark:text-red-400 font-bold shadow-sm animate-in fade-in">
             <AlertCircle className="w-6 h-6" /> Lỗi máy chủ: {errorMsg}
           </div>
         )}
@@ -139,7 +189,7 @@ export default function AdminPage() {
             </h2>
             <button
                type="submit"
-               disabled={status === "loading"}
+               disabled={status === "loading" || isUploading}
                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-black flex justify-center items-center gap-2 transition-transform hover:scale-105 shadow-lg shadow-blue-500/20 disabled:scale-100 disabled:opacity-50"
             >
               <Save className="w-5 h-5" /> {status === "loading" ? "Đang xử lý..." : "Lưu Sản Phẩm"}
@@ -150,23 +200,53 @@ export default function AdminPage() {
             
             {/* Visual Upload Zones */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl p-10 flex flex-col items-center justify-center text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="p-4 bg-blue-100 dark:bg-blue-900/40 rounded-full mb-4 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300">
-                  <UploadCloud className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-                </div>
-                <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xl">Tải lên Hình ảnh (.jpg, .png)</p>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2">Kéo thả album ảnh vào đây hoặc nhấp để Duyệt</p>
-                <input type="file" multiple accept=".jpg,.png,.jpeg" className="hidden" />
-              </label>
+              
+              {/* Cột 1: Tải Ảnh */}
+              <div className="relative">
+                <label className={`border-2 border-dashed ${isUploading ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20' : 'border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'} rounded-3xl p-10 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group bg-slate-50/50 dark:bg-slate-900/50 h-full`}>
+                  {isUploading ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+                      <p className="font-extrabold text-blue-700 dark:text-blue-400 text-lg">Đang tải lên {uploadProgress.current}/{uploadProgress.total} ảnh...</p>
+                      <div className="w-full max-w-xs bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 mt-4 overflow-hidden">
+                        <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progressPercentage}%` }}></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-4 bg-blue-100 dark:bg-blue-900/40 rounded-full mb-4 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300">
+                        <UploadCloud className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xl">Tải lên khối lượng lớn</p>
+                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2">Chọn tối đa 50 file (.jpg, .png)</p>
+                      <input type="file" multiple accept="image/*" disabled={isUploading} onChange={handleFileUpload} className="hidden" />
+                    </>
+                  )}
+                </label>
+              </div>
 
-              <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl p-10 flex flex-col items-center justify-center text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="p-4 bg-rose-100 dark:bg-rose-900/40 rounded-full mb-4 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300">
-                  <FileText className="w-10 h-10 text-rose-600 dark:text-rose-400" />
-                </div>
-                <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xl">Chứng nhận / CO-CQ (.pdf)</p>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2">Kéo thả các tài liệu PDF xác minh vào đây</p>
-                <input type="file" multiple accept=".pdf" className="hidden" />
-              </label>
+              {/* Cột 2: Danh sách ảnh đã tải lên */}
+              <div className="border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 bg-white dark:bg-slate-900 h-full flex flex-col">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center justify-between">
+                  <span>Album Sản phẩm</span>
+                  <span className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-xs">{formData.images.length} Ảnh</span>
+                </h3>
+                
+                {formData.images.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-600 text-sm font-medium">Chưa có ảnh nào được tải lên</div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 overflow-y-auto max-h-[220px] pr-2 custom-scrollbar">
+                    {formData.images.map((img, i) => (
+                      <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group">
+                        <img src={img} alt="" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => removeArrayItem("images", img)} className="absolute inset-0 bg-red-600/80 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex backdrop-blur-sm">
+                          <Trash2 className="w-5 h-5 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <hr className="border-slate-100 dark:border-slate-800" />
