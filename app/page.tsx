@@ -383,7 +383,7 @@ export default function Home() {
             
             <div className="p-4 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
               {getActiveFilterCount() > 0 && (
-                <button onClick={clearFilters} className="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 transition-colors border border-red-200 dark:border-red-800/50">
+                <button onClick={clearFilters} className="w-full py-3.5 bg-red-500 text-white font-black rounded-xl shadow-lg shadow-red-500/30 hover:bg-red-600 hover:scale-[1.02] transition-all border border-red-400 shrink-0">
                   Xóa Lọc Hiện Ở ({getActiveFilterCount()} Lựa Chọn)
                 </button>
               )}
@@ -470,8 +470,17 @@ export default function Home() {
                       <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Phân tích giá thành, độ dày và lớp bảo vệ mài mòn.</p>
                     </div>
                   ) : (
-                    <div className="prose prose-slate dark:prose-invert prose-indigo max-w-none prose-h1:text-2xl prose-h1:font-black prose-h3:text-indigo-600 dark:prose-h3:text-indigo-400 prose-li:font-medium">
-                      <ReactMarkdown>{compareResult}</ReactMarkdown>
+                    <div className="flex flex-col h-full">
+                      <div className="prose prose-slate dark:prose-invert prose-indigo max-w-none prose-h1:text-2xl prose-h1:font-black prose-h3:text-indigo-600 dark:prose-h3:text-indigo-400 prose-li:font-medium">
+                        <ReactMarkdown>{compareResult}</ReactMarkdown>
+                      </div>
+                      {compareResult.toLowerCase().includes("lỗi") && (
+                        <div className="mt-8 flex justify-center">
+                           <button onClick={executeAiComparison} className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:scale-105">
+                              Thử Lại (Retry API)
+                           </button>
+                        </div>
+                      )}
                     </div>
                   )}
                </div>

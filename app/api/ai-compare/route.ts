@@ -13,10 +13,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Yêu cầu tối thiểu 2 sản phẩm để so sánh." }, { status: 400 });
     }
 
+    const sanitizedProducts = products.map((p: any) => ({
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      specs: p.specs,
+      pp_score: p.pp_score,
+      base_price: p.base_price
+    }));
+
     const systemPrompt = `Bạn là Chuyên gia Tư vấn Vật liệu Sàn cấp cao của "Nhật Hoa ICT". Nhiệm vụ tối thượng của bạn là so sánh và trả lời chính xác 3 câu hỏi sau đối với dữ liệu các sản phẩm được cung cấp:
 
 DỮ LIỆU SẢN PHẨM HIỆN TẠI ĐỂ BẠN PHÂN TÍCH:
-${JSON.stringify(products, null, 2)}
+${JSON.stringify(sanitizedProducts, null, 2)}
 
 YÊU CẦU TRẢ LỜI CỤ THỂ 3 CÂU HỎI BẰNG TIẾNG VIỆT (Dùng Markdown):
 1. Cấu trúc bảng biểu So Sánh Các Thông số chi tiết (về Độ dày, Wear Layer, Công năng).
