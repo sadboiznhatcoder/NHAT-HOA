@@ -40,13 +40,16 @@ Hãy trả lời một cách cực kỳ chuyên nghiệp, chính xác và sử d
         { role: 'system', content: systemPrompt },
         { role: 'user', content: 'Vui lòng so sánh chi tiết các mã sàn đang chọn để tôi quyết định.' }
       ],
-      model: 'llama3-70b-8192',
+      model: 'llama3-8b-8192',
       temperature: 0.1, // Low temp for analytical accuracy
       max_tokens: 1536,
     });
 
     return NextResponse.json({ reply: chatCompletion.choices[0]?.message?.content || '' });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 429) {
+      return NextResponse.json({ error: "Hệ thống AI đang quá tải (Rate Limit). Vui lòng thử lại sau vài giây." }, { status: 429 });
+    }
     console.error('Groq Compare Error:', error);
     return NextResponse.json({ error: 'Failed to process AI comparison request' }, { status: 500 });
   }

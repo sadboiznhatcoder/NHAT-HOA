@@ -131,7 +131,7 @@ export default function Home() {
     const searchQuery = directQuery || query;
     if (!searchQuery.trim()) return;
 
-    if (searchQuery.trim().toUpperCase().startsWith("POST")) {
+    if (searchQuery.startsWith("POST ")) {
       setLoading(true);
       const rawText = searchQuery.trim().substring(4).trim();
       try {

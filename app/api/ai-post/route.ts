@@ -21,14 +21,15 @@ export async function POST(req: Request) {
 Nhiệm vụ: Trích xuất thông tin kỹ thuật từ ĐOẠN TEXT ĐẦU VÀO và trả về chính xác một JSON schema dùng để Insert trực tiếp vào cơ sở dữ liệu Supabase của sản phẩm Sàn.
 
 QUY TẮC MAPPING ĐỊNH DẠNG:
-- brand: (Chuỗi string, VD: "Tarkett", "Gerflor", "Responsive"...)
+- brand: (Chuỗi string, VD: "Tarkett", "LG Hausys", "Suminoe", "NAKA CORP"...)
 - name: (Tên mã sản phẩm)
-- category: CHỈ CHỌN 1 TRONG CÁC GIÁ TRỊ SAU NẾU TRÙNG KHỚP (Sàn Y Tế, Sàn Thể Thao, Sàn Văn Phòng, Sàn Công Nghiệp, Sàn Giao Thông, Khác).
+- category: CHỈ CHỌN 1 TRONG CÁC GIÁ TRỊ SAU NẾU TRÙNG KHỚP (Sàn Y Tế, Sàn Thể Thao, Sàn Văn Phòng, Sàn Công Nghiệp, Sàn Giao Thông, Sàn Nâng, Clean Room, Thảm, Sàn Đặc Biệt, Khác).
 - materials: (Mô tả, cấu tạo hoặc ưu điểm tổng quan bằng text)
 - Độ dày: TRÍCH XUẤT ĐỘ DÀY (Thickness) (VD: "2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm", Khác)
 - Lớp bảo vệ: TRÍCH XUẤT WEAR LAYER (VD: "0.1mm", "0.3mm", "0.5mm", "0.7mm", "1.0mm", Khác)
 - Cấu trúc: CHỈ CHỌN (Sàn cuộn, Sàn tấm, Sàn thanh, Sàn hèm khóa, Sàn nâng)
-- Công năng: Chuỗi các tính năng (Kháng khuẩn, Chống tĩnh điện, Chịu lực cao, Chống trơn trượt, Cách âm, Chống cháy). Ghép bằng dấu phẩy. VD: "Kháng khuẩn, Chống tĩnh điện"
+- Kiểu lắp đặt: CHỈ CHỌN (Dán keo, Hèm khóa, Tự dính, Đặt rời)
+- Công năng: Chuỗi các tính năng (Kháng khuẩn, Chống tĩnh điện, Chịu lực cao, Chống trơn trượt, Cách âm, Chống cháy). VD: "Kháng khuẩn, Chống tĩnh điện"
 
 TOÀN BỘ OUT PHẢI TUÂN THEO CẤU TRÚC JSON SAU (KHÔNG WRAP BẰNG \`\`\`json):
 {
@@ -36,13 +37,17 @@ TOÀN BỘ OUT PHẢI TUÂN THEO CẤU TRÚC JSON SAU (KHÔNG WRAP BẰNG \`\`\`
   "brand": "...",
   "category": "...",
   "materials": "...",
+  "base_price": 0,
+  "pp_score": 8,
   "specs": {
      "Độ dày": "...",
      "Lớp bảo vệ": "...",
      "Cấu trúc": "...",
+     "Kiểu lắp đặt": "...",
      "Công năng": "..."
   }
-}`;
+}
+LƯU Ý: Nếu không tìm thấy thông tin nào đó, trả về Null hoặc rỗng thay vì bịa đặt.`;
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
@@ -69,8 +74,8 @@ TOÀN BỘ OUT PHẢI TUÂN THEO CẤU TRÚC JSON SAU (KHÔNG WRAP BẰNG \`\`\`
        category: payload.category || "Khác",
        materials: payload.materials || "",
        specs: payload.specs || {},
-       base_price: 0,
-       pp_score: 5,
+       base_price: payload.base_price || 0,
+       pp_score: payload.pp_score || 5,
        colors: [],
        images: [],
        installation_details: {}
