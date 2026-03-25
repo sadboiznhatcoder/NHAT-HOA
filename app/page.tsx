@@ -43,7 +43,8 @@ const hierarchyData = [
      label: "Sàn Nâng (Access Floor)",
      categoryMatch: "Sàn Nâng",
      filters: [
-       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["NAKA CORP", "Yikuan", "Unitile"] }
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["NAKA CORP", "Yikuan", "Unitile"] },
+       { title: "Chất liệu cốt", key: "type" as keyof FilterState, options: ["Thép lõi xi măng", "Gỗ ép", "Nhôm"] }
      ]
   },
   {
@@ -51,7 +52,8 @@ const hierarchyData = [
      label: "Sàn Tự Phẳng",
      categoryMatch: "Sàn Tự Phẳng",
      filters: [
-       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Viacor"] }
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Viacor"] },
+       { title: "Hệ thống", key: "type" as keyof FilterState, options: ["Epoxy", "Polyurethane"] }
      ]
   },
   {
@@ -59,7 +61,8 @@ const hierarchyData = [
      label: "Phòng Sạch (Clean Room)",
      categoryMatch: "Phòng Sạch",
      filters: [
-       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Beaver Panel", "Walltech"] }
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Beaver Panel", "Walltech"] },
+       { title: "Cấu kiện", key: "type" as keyof FilterState, options: ["Sandwich Panel", "Cửa phòng sạch", "Phụ kiện nhôm"] }
      ]
   }
 ];

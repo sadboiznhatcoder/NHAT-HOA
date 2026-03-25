@@ -28,6 +28,7 @@ export default function AdminPage() {
 
   const [productsList, setProductsList] = useState<any[]>([]);
   const [listSearch, setListSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("ALL");
   const [listCategory, setListCategory] = useState("Tất cả");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
@@ -192,8 +193,8 @@ export default function AdminPage() {
 
   const filteredList = productsList.filter(p => {
     const matchesSearch = (p.name || "").toLowerCase().includes(listSearch.toLowerCase()) || (p.brand || "").toLowerCase().includes(listSearch.toLowerCase());
-    const matchesCat = listCategory === "Tất cả" || p.category === listCategory;
-    return matchesSearch && matchesCat;
+    const matchesCategory = filterCategory === "ALL" || p.category === filterCategory;
+    return matchesSearch && matchesCategory;
   });
 
   return (
@@ -399,6 +400,18 @@ export default function AdminPage() {
           <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2"><LayoutDashboard className="w-5 h-5 text-blue-600" /> Quản lý danh mục Thực tế</h2>
             <div className="flex gap-3 w-full sm:w-auto">
+              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full sm:w-48 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-950 font-medium">
+                <option value="ALL">Tất cả danh mục</option>
+                <option value="Sàn VINYL">Sàn VINYL</option>
+                <option value="Sàn Y Tế">Sàn Y Tế</option>
+                <option value="Sàn Thể Thao">Sàn Thể Thao</option>
+                <option value="Sàn Thạch Anh">Sàn Thạch Anh</option>
+                <option value="Sàn Epoxy">Sàn Epoxy</option>
+                <option value="Thảm">Thảm</option>
+                <option value="Sàn Nâng">Sàn Nâng</option>
+                <option value="Sàn Tự Phẳng">Sàn Tự Phẳng</option>
+                <option value="Phòng Sạch">Phòng Sạch</option>
+              </select>
               <div className="relative flex-1 sm:flex-none">
                 <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input type="text" placeholder="Tìm tên, mã sản phẩm..." value={listSearch} onChange={e => setListSearch(e.target.value)} className="w-full sm:w-64 pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-950 font-medium" />
