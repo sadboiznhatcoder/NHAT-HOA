@@ -300,7 +300,7 @@ export default function Home() {
 
                 {categoryBlock.filters.map(subFilter => (
                   <div key={subFilter.title} className="space-y-3">
-                    <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{subFilter.title}</h4>
+                    <h4 className="text-[11px] font-black text-slate-700 dark:text-slate-500 uppercase tracking-widest">{subFilter.title}</h4>
                     <div className="flex flex-col gap-1.5">
                       {subFilter.options.map(opt => {
                         const isChecked = activeFilters[subFilter.key].includes(opt);
@@ -449,7 +449,7 @@ export default function Home() {
             </div>
             <div>
                <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">Đang chọn <span className="text-indigo-600 dark:text-indigo-400 font-black">{compareList.length}</span> sản phẩm</p>
-               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Có thể đối chiếu hệ số P/P tự động</p>
+               <p className="text-[11px] font-medium text-slate-700 dark:text-slate-400">Có thể đối chiếu hệ số P/P tự động</p>
             </div>
             <button onClick={executeAiComparison} className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-black px-6 py-3 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105">
                <Sparkles className="w-5 h-5 fill-white/20" /> Matrix Comparison
@@ -465,7 +465,7 @@ export default function Home() {
                     <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 flex items-center gap-3">
                       <Scale className="w-8 h-8 text-indigo-500" /> Bản báo cáo Khuyên Dùng
                     </h2>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium mt-2">Dựa trên cơ sở dữ liệu kỹ thuật và LLM Llama-3 (Groq Hardware)</p>
+                    <p className="text-slate-700 dark:text-slate-400 font-medium mt-2">Dựa trên cơ sở dữ liệu kỹ thuật và LLM Llama-3 (Groq Hardware)</p>
                   </div>
                   <button onClick={() => setIsCompareModalOpen(false)} className="p-2 bg-white dark:bg-slate-800 rounded-full shadow-sm hover:scale-110 transition-transform"><X className="w-6 h-6 text-slate-500" /></button>
                </div>
@@ -477,7 +477,7 @@ export default function Home() {
                         <Sparkles className="w-8 h-8 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                       </div>
                       <h3 className="text-xl font-black text-slate-800 dark:text-slate-200">Đang phân tích thông số bằng AI...</h3>
-                      <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">(Vui lòng đợi khoảng 5-10 giây)</p>
+                      <p className="text-slate-700 dark:text-slate-400 mt-2 font-medium">(Vui lòng đợi khoảng 5-10 giây)</p>
                     </div>
                   ) : (
                     <div className="flex flex-col h-full">
@@ -550,13 +550,13 @@ export default function Home() {
 
             <div className="flex-1">
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-32 text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col items-center justify-center py-32 text-slate-700 dark:text-slate-400">
                   <div className="relative">
                      <div className="w-20 h-20 rounded-full border-4 border-slate-200 dark:border-slate-800 border-t-blue-600 dark:border-t-blue-500 animate-spin"></div>
                      <Search className="w-8 h-8 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
                   <p className="font-extrabold text-xl text-slate-800 dark:text-slate-200 mt-6">Groq AI đang truy quét CSDL...</p>
-                  <p className="text-slate-500 font-medium mt-2">Truy xuất tốc độ 800 tokens/s dành riêng cho bạn</p>
+                  <p className="text-slate-700 font-medium mt-2">Truy xuất tốc độ 800 tokens/s dành riêng cho bạn</p>
                 </div>
               ) : processedList.length > 0 ? (
                 <>
@@ -568,7 +568,7 @@ export default function Home() {
                         </div>
                         <div>
                            <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Trợ Lý Dữ Liệu Nhật Hoa</h2>
-                           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Giá trị cốt lõi • Phân tích Realtime</p>
+                           <p className="text-[11px] font-black text-slate-700 dark:text-slate-500 uppercase tracking-widest mt-0.5">Giá trị cốt lõi • Phân tích Realtime</p>
                         </div>
                       </div>
                       <div className="prose prose-slate dark:prose-invert prose-indigo max-w-none prose-p:font-medium prose-p:leading-relaxed prose-img:rounded-xl prose-img:shadow-md prose-img:max-h-64 prose-img:object-cover prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-headings:text-slate-800 dark:prose-headings:text-slate-200">
@@ -642,13 +642,13 @@ export default function Home() {
                                {product.specs?.['Lớp bảo vệ'] && <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold rounded-md border border-slate-200 dark:border-slate-700">Wear {product.specs['Lớp bảo vệ']}</span>}
                             </div>
 
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 line-clamp-2 font-medium">
+                            <p className="text-sm text-slate-800 dark:text-slate-400 mb-6 line-clamp-2 font-medium">
                               {product.description || product.materials}
                             </p>
 
                             <div className="mt-auto border-t-2 border-slate-100 dark:border-slate-800/50 pt-5 flex justify-between items-end">
                               <div>
-                                <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 group-hover:text-blue-500 transition-colors">Báo giá cơ bản</p>
+                                <p className="text-[11px] font-black text-slate-700 dark:text-slate-500 uppercase tracking-widest mb-1 group-hover:text-blue-500 transition-colors">Báo giá cơ bản</p>
                                 <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.base_price || product.price)}
                                 </p>
@@ -673,7 +673,7 @@ export default function Home() {
                     <ShieldCheck className="w-10 h-10 text-slate-400 dark:text-slate-600" />
                   </div>
                   <p className="text-2xl font-black text-slate-800 dark:text-slate-200">Không tìm thấy mã sàn phù hợp</p>
-                  <p className="text-slate-500 dark:text-slate-400 mt-3 font-medium max-w-sm mx-auto">Thử hạ bớt tiêu chí trong Bảng Phân Cấp hoặc thay đổi truy vấn AI của bạn.</p>
+                  <p className="text-slate-700 dark:text-slate-400 mt-3 font-medium max-w-sm mx-auto">Thử hạ bớt tiêu chí trong Bảng Phân Cấp hoặc thay đổi truy vấn AI của bạn.</p>
                   <button onClick={clearFilters} className="mt-8 px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:scale-105 transition-transform">Xóa Bộ Lọc</button>
                 </div>
               )}
