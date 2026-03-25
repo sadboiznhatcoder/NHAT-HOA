@@ -35,7 +35,7 @@ const hierarchyData = [
      categoryMatch: "Thảm",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Suminoe"] },
-       { title: "Chủng loại", key: "type" as keyof FilterState, options: ["Thảm Cuộn", "Thảm Tấm"] }
+       { title: "Loại thảm", key: "type" as keyof FilterState, options: ["Tile", "Roll", "Carpet"] }
      ]
   },
   {
@@ -62,7 +62,15 @@ const hierarchyData = [
      categoryMatch: "Phòng Sạch",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Beaver Panel", "Walltech"] },
-       { title: "Cấu kiện", key: "type" as keyof FilterState, options: ["Sandwich Panel", "Cửa phòng sạch", "Phụ kiện nhôm"] }
+       { title: "Cấu kiện", key: "type" as keyof FilterState, options: ["Panel tường", "Trần", "Cửa"] }
+     ]
+  },
+  {
+     id: "SÀN_ĐẶC_BIỆT",
+     label: "Sàn Đặc Biệt",
+     categoryMatch: "Sàn Đặc Biệt",
+     filters: [
+       { title: "Chức năng", key: "type" as keyof FilterState, options: ["Chống tĩnh điện", "Sàn kháng khuẩn", "Sàn phát sáng"] }
      ]
   }
 ];
