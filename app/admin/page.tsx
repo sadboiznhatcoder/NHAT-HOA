@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Save, Plus, Trash2, CheckCircle2, AlertCircle, LayoutDashboard, Settings, X, UploadCloud, Edit, Search, Filter, Loader2, Link } from "lucide-react";
 import { useTheme } from "next-themes";
+import { CATEGORY_HIERARCHY } from "../../lib/constants";
 
 const PRODUCT_CATEGORIES = ["Sàn Y Tế", "Sàn Thể Thao", "Sàn Văn Phòng", "Sàn Công Nghiệp", "Sàn Giao Thông", "Khác"];
 const THICKNESS_OPTS = ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm", "Khác"];
@@ -259,14 +260,22 @@ export default function AdminPage() {
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Thương hiệu (Brand) *</label>
                 <input required list="brand-suggestions" type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium" placeholder="VD: Tarkett, Gerflor..." />
                 <datalist id="brand-suggestions">
-                   {["Tarkett", "LG Hausys", "KDF", "Gerflor", "Responsive", "Suminoe", "NAKA CORP", "Yikuan", "Unitile", "Viacor", "Beaver Panel", "Walltech"].map(b => <option key={b} value={b} />)}
+                   {(CATEGORY_HIERARCHY[formData.category as keyof typeof CATEGORY_HIERARCHY]?.brands || ["Tarkett", "LG Hausys", "Suminoe", "NAKA CORP", "Viacor", "Beaver Panel"]).map(b => <option key={b} value={b} />)}
                 </datalist>
               </div>
               
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Mức phân loại</label>
-                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium">
-                  {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value, specs: {...formData.specs, 'Hạng mục con': ''}})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium">
+                  {Object.keys(CATEGORY_HIERARCHY).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Hạng mục con (Sub-category)</label>
+                <select value={formData.specs?.['Hạng mục con'] || ""} onChange={e => setFormData({...formData, specs: {...formData.specs, 'Hạng mục con': e.target.value}})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium">
+                  <option value="">-- Chọn (Tùy chọn) --</option>
+                  {(CATEGORY_HIERARCHY[formData.category as keyof typeof CATEGORY_HIERARCHY]?.subCategories || []).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               

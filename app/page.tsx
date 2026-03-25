@@ -21,56 +21,55 @@ const hierarchyData = [
   {
      id: "VINYL",
      label: "Sàn VINYL",
-     categoryMatch: "Sàn VINYL",
+     categoryMatch: "VINYL",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Tarkett", "LG Hausys", "KDF", "Gerflor", "Responsive"] },
-       { title: "Công năng", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao", "Chống trượt"] },
-       { title: "Độ dày", key: "thickness" as keyof FilterState, options: ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm"] },
-       { title: "Lớp bảo vệ", key: "wearLayer" as keyof FilterState, options: ["0.1mm", "0.3mm", "0.5mm", "0.7mm", "1.0mm"] }
+       { title: "Hạng mục con", key: "type" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao", "Chống trơn trượt"] }
      ]
   },
   {
      id: "THẢM",
      label: "Thảm (Carpet)",
-     categoryMatch: "Thảm",
+     categoryMatch: "THẢM (CARPET)",
      filters: [
-       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Suminoe"] },
-       { title: "Loại thảm", key: "type" as keyof FilterState, options: ["Thảm tấm (Carpet Tile)", "Thảm cuộn (Broadloom/Roll)"] }
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Suminoe", "Khác"] },
+       { title: "Hạng mục con", key: "type" as keyof FilterState, options: ["Thảm tấm (Carpet Tile)", "Thảm cuộn (Broadloom/Roll)", "Thảm viên"] }
      ]
   },
   {
      id: "SÀN_NÂNG",
      label: "Sàn Nâng (Access Floor)",
-     categoryMatch: "Sàn Nâng",
+     categoryMatch: "SÀN NÂNG (ACCESS FLOOR)",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["NAKA CORP", "Yikuan", "Unitile"] },
-       { title: "Chất liệu cốt", key: "type" as keyof FilterState, options: ["Thép lõi xi măng (Cementitious)", "Gỗ ép (Woodcore)", "Nhôm đúc (Aluminum)", "Canxi Sunfat (Calcium Sulphate)"] }
+       { title: "Hạng mục con", key: "type" as keyof FilterState, options: ["Thép lõi xi măng (Cementitious)", "Gỗ ép (Woodcore)", "Nhôm đúc (Aluminum)", "Canxi Sunfat (Calcium Sulphate)"] }
      ]
   },
   {
      id: "SÀN_TỰ_PHẲNG",
      label: "Sàn Tự Phẳng",
-     categoryMatch: "Sàn Tự Phẳng",
+     categoryMatch: "SÀN TỰ PHẲNG (EPOXY/PU)",
      filters: [
-       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Viacor"] },
-       { title: "Hệ thống", key: "type" as keyof FilterState, options: ["Sơn Epoxy", "Sơn Polyurethane (PU)"] }
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Viacor", "Khác"] },
+       { title: "Hạng mục con", key: "type" as keyof FilterState, options: ["Sơn Epoxy", "Sơn Polyurethane (PU)"] }
      ]
   },
   {
      id: "CLEAN_ROOM",
      label: "Phòng Sạch (Clean Room)",
-     categoryMatch: "Phòng Sạch",
+     categoryMatch: "PHÒNG SẠCH (CLEAN ROOM)",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Beaver Panel", "Walltech"] },
-       { title: "Cấu kiện", key: "type" as keyof FilterState, options: ["Panel tường", "Panel trần", "Cửa phòng sạch"] }
+       { title: "Hạng mục con", key: "type" as keyof FilterState, options: ["Panel tường (Wall Panel)", "Panel trần (Ceiling Panel)", "Cửa phòng sạch (Cleanroom Door)", "Phụ kiện nhôm"] }
      ]
   },
   {
      id: "SÀN_ĐẶC_BIỆT",
      label: "Sàn Đặc Biệt Khác",
-     categoryMatch: "Sàn Đặc Biệt",
+     categoryMatch: "SÀN ĐẶC BIỆT",
      filters: [
-       { title: "Phân loại", key: "type" as keyof FilterState, options: ["Sàn thể thao (Sports floor)", "Sàn hèm khóa (SPC)", "Sàn cao su (Rubber)"] }
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Khác"] },
+       { title: "Hạng mục con", key: "type" as keyof FilterState, options: ["Sàn thể thao ngoài trời", "Sàn hèm khóa (SPC)", "Sàn cao su (Rubber)"] }
      ]
   }
 ];
