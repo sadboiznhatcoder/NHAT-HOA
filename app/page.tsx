@@ -24,7 +24,7 @@ const hierarchyData = [
      categoryMatch: "Sàn VINYL",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Tarkett", "LG Hausys", "KDF", "Gerflor", "Responsive"] },
-       { title: "Công năng", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao"] },
+       { title: "Công năng", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao", "Chống trượt"] },
        { title: "Độ dày", key: "thickness" as keyof FilterState, options: ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm"] },
        { title: "Lớp bảo vệ", key: "wearLayer" as keyof FilterState, options: ["0.1mm", "0.3mm", "0.5mm", "0.7mm", "1.0mm"] }
      ]
@@ -35,7 +35,7 @@ const hierarchyData = [
      categoryMatch: "Thảm",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Suminoe"] },
-       { title: "Loại thảm", key: "type" as keyof FilterState, options: ["Tile", "Roll", "Carpet"] }
+       { title: "Loại thảm", key: "type" as keyof FilterState, options: ["Thảm tấm (Carpet Tile)", "Thảm cuộn (Broadloom/Roll)"] }
      ]
   },
   {
@@ -44,7 +44,7 @@ const hierarchyData = [
      categoryMatch: "Sàn Nâng",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["NAKA CORP", "Yikuan", "Unitile"] },
-       { title: "Chất liệu cốt", key: "type" as keyof FilterState, options: ["Thép lõi xi măng", "Gỗ ép", "Nhôm"] }
+       { title: "Chất liệu cốt", key: "type" as keyof FilterState, options: ["Thép lõi xi măng (Cementitious)", "Gỗ ép (Woodcore)", "Nhôm đúc (Aluminum)", "Canxi Sunfat (Calcium Sulphate)"] }
      ]
   },
   {
@@ -53,7 +53,7 @@ const hierarchyData = [
      categoryMatch: "Sàn Tự Phẳng",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Viacor"] },
-       { title: "Hệ thống", key: "type" as keyof FilterState, options: ["Epoxy", "Polyurethane"] }
+       { title: "Hệ thống", key: "type" as keyof FilterState, options: ["Sơn Epoxy", "Sơn Polyurethane (PU)"] }
      ]
   },
   {
@@ -62,15 +62,15 @@ const hierarchyData = [
      categoryMatch: "Phòng Sạch",
      filters: [
        { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Beaver Panel", "Walltech"] },
-       { title: "Cấu kiện", key: "type" as keyof FilterState, options: ["Panel tường", "Trần", "Cửa"] }
+       { title: "Cấu kiện", key: "type" as keyof FilterState, options: ["Panel tường", "Panel trần", "Cửa phòng sạch"] }
      ]
   },
   {
      id: "SÀN_ĐẶC_BIỆT",
-     label: "Sàn Đặc Biệt",
+     label: "Sàn Đặc Biệt Khác",
      categoryMatch: "Sàn Đặc Biệt",
      filters: [
-       { title: "Chức năng", key: "type" as keyof FilterState, options: ["Chống tĩnh điện", "Sàn kháng khuẩn", "Sàn phát sáng"] }
+       { title: "Phân loại", key: "type" as keyof FilterState, options: ["Sàn thể thao (Sports floor)", "Sàn hèm khóa (SPC)", "Sàn cao su (Rubber)"] }
      ]
   }
 ];

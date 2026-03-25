@@ -249,12 +249,18 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tên sản phẩm *</label>
-                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium" placeholder="VD: Sàn kháng khuẩn IQ Optima" />
+                <input required list="name-suggestions" type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium" placeholder="VD: Sàn kháng khuẩn IQ Optima" />
+                <datalist id="name-suggestions">
+                   {Array.from(new Set(productsList.map(p => p.name))).map((n: any) => <option key={n} value={n} />)}
+                </datalist>
               </div>
               
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Thương hiệu (Brand) *</label>
-                <input required type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium" placeholder="VD: Tarkett, Gerflor..." />
+                <input required list="brand-suggestions" type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 font-medium" placeholder="VD: Tarkett, Gerflor..." />
+                <datalist id="brand-suggestions">
+                   {["Tarkett", "LG Hausys", "KDF", "Gerflor", "Responsive", "Suminoe", "NAKA CORP", "Yikuan", "Unitile", "Viacor", "Beaver Panel", "Walltech"].map(b => <option key={b} value={b} />)}
+                </datalist>
               </div>
               
               <div>
