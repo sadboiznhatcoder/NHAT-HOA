@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Menu, X, Sparkles, Loader2, Heart, Phone, MessageCircle, Clock, Sun, Moon, Filter, ShieldCheck, Settings, Scale, Check, Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, Menu, X, Sparkles, Loader2, Heart, MessageCircle, Sun, Moon, Filter, ShieldCheck, Settings, Scale, Check, Plus, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { useTheme } from "next-themes";
 import { supabase } from "../lib/supabaseClient";
 import ReactMarkdown from "react-markdown";
 
-// Types
 type FilterState = {
   brand: string[];
   category: string[];
@@ -18,13 +17,59 @@ type FilterState = {
   installType: string[];
 };
 
+const hierarchyData = [
+  {
+     id: "VINYL",
+     label: "Sàn VINYL",
+     categoryMatch: "Sàn VINYL",
+     filters: [
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Tarkett", "LG Hausys", "KDF", "Gerflor", "Responsive"] },
+       { title: "Công năng", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao"] },
+       { title: "Độ dày", key: "thickness" as keyof FilterState, options: ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm"] },
+       { title: "Lớp bảo vệ", key: "wearLayer" as keyof FilterState, options: ["0.1mm", "0.3mm", "0.5mm", "0.7mm", "1.0mm"] }
+     ]
+  },
+  {
+     id: "THẢM",
+     label: "Thảm (Carpet)",
+     categoryMatch: "Thảm",
+     filters: [
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Suminoe"] },
+       { title: "Chủng loại", key: "type" as keyof FilterState, options: ["Thảm Cuộn", "Thảm Tấm"] }
+     ]
+  },
+  {
+     id: "SÀN_NÂNG",
+     label: "Sàn Nâng (Access Floor)",
+     categoryMatch: "Sàn Nâng",
+     filters: [
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["NAKA CORP", "Yikuan", "Unitile"] }
+     ]
+  },
+  {
+     id: "SÀN_TỰ_PHẲNG",
+     label: "Sàn Tự Phẳng",
+     categoryMatch: "Sàn Tự Phẳng",
+     filters: [
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Viacor"] }
+     ]
+  },
+  {
+     id: "CLEAN_ROOM",
+     label: "Phòng Sạch (Clean Room)",
+     categoryMatch: "Phòng Sạch",
+     filters: [
+       { title: "Thương hiệu", key: "brand" as keyof FilterState, options: ["Beaver Panel", "Walltech"] }
+     ]
+  }
+];
+
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Search & Products State
   const [query, setQuery] = useState("");
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
@@ -32,21 +77,12 @@ export default function Home() {
   const [searched, setSearched] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
 
-  // Advanced Filters State
   const [activeFilters, setActiveFilters] = useState<FilterState>({
-    brand: [],
-    category: [],
-    thickness: [],
-    wearLayer: [],
-    type: [],
-    colorTone: [],
-    application: [],
-    installType: []
+    brand: [], category: [], thickness: [], wearLayer: [], type: [], colorTone: [], application: [], installType: []
   });
-
+  
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(["VINYL"]);
   const [wishlist, setWishlist] = useState<string[]>([]);
-
-  // AI Compare Engine States
   const [compareList, setCompareList] = useState<any[]>([]);
   const [isComparing, setIsComparing] = useState(false);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
@@ -54,9 +90,23 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-
     const savedWishlist = localStorage.getItem("nhat_hoa_wishlist");
     if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
+
+    if (typeof window !== 'undefined') {
+       const params = new URLSearchParams(window.location.search);
+       setActiveFilters({
+         brand: params.getAll('brand'),
+         category: params.getAll('category'),
+         thickness: params.getAll('thickness'),
+         wearLayer: params.getAll('wearLayer'),
+         type: params.getAll('type'),
+         colorTone: params.getAll('colorTone'),
+         application: params.getAll('application'),
+         installType: params.getAll('installType')
+       });
+       if (Array.from(params.keys()).length > 0) setSearched(true);
+    }
 
     const loadRealData = async () => {
         const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
@@ -70,7 +120,6 @@ export default function Home() {
     const searchQuery = directQuery || query;
     if (!searchQuery.trim()) return;
 
-    // AI POST PROTOCOL INTERCEPTOR
     if (searchQuery.trim().toUpperCase().startsWith("POST")) {
       setLoading(true);
       const rawText = searchQuery.trim().substring(4).trim();
@@ -163,89 +212,111 @@ export default function Home() {
     }
   };
 
-  const handleFilterToggle = (category: keyof FilterState, value: string) => {
+  const handleFilterToggle = (categoryKey: keyof FilterState, value: string) => {
     setActiveFilters(prev => {
-      const current = prev[category] || [];
-      if (current.includes(value)) {
-        return { ...prev, [category]: current.filter(v => v !== value) };
-      } else {
-        return { ...prev, [category]: [...current, value] };
+      const current = prev[categoryKey] || [];
+      const updatedList = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+      const newState = { ...prev, [categoryKey]: updatedList };
+      
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams();
+        Object.entries(newState).forEach(([k, vals]) => {
+           if (Array.isArray(vals)) vals.forEach(v => params.append(k, v));
+        });
+        window.history.replaceState(null, '', `?${params.toString()}`);
       }
+      return newState;
     });
+    setSearched(true);
   };
 
-  // Process data locally through Faceted Filters
-  const processedList = (searched && results.length > 0 ? results : allProducts).filter(p => {
-    // Stringified spec dictionary to easily run text-inclusions
-    const specsDump = JSON.stringify(p.specs || {}).toLowerCase() + " " + (p.description || "").toLowerCase() + " " + (p.name || "").toLowerCase() + " " + (p.category || "").toLowerCase();
-    
-    // Thickness
-    if (activeFilters.thickness.length > 0) {
-      if (!activeFilters.thickness.some(th => specsDump.includes(th.toLowerCase()))) return false;
-    }
-    // Wear Layer
-    if (activeFilters.wearLayer.length > 0) {
-      if (!activeFilters.wearLayer.some(wl => specsDump.includes(wl.toLowerCase()))) return false;
-    }
-    // Floor Type
-    if (activeFilters.type.length > 0) {
-      if (!activeFilters.type.some(t => {
-        if (t === 'Sàn cuộn') return specsDump.includes('roll') || specsDump.includes('cuộn');
-        if (t === 'Sàn tấm') return specsDump.includes('tile') || specsDump.includes('tấm');
-        if (t === 'Sàn thanh') return specsDump.includes('plank') || specsDump.includes('thanh');
-        if (t === 'Sàn hèm khóa') return specsDump.includes('spc') || specsDump.includes('hèm');
-        return specsDump.includes(t.toLowerCase());
-      })) return false;
-    }
-    // App
-    if (activeFilters.application.length > 0) {
-      if (!activeFilters.application.some(app => specsDump.includes(app.toLowerCase()))) return false;
-    }
-
-    // Brand
-    if (activeFilters.brand.length > 0) {
-      if (!activeFilters.brand.some(br => specsDump.includes(br.toLowerCase()))) return false;
-    }
-    // Category
-    if (activeFilters.category.length > 0) {
-      if (!activeFilters.category.some(cat => specsDump.includes(cat.toLowerCase()))) return false;
-    }
-    // Install Type
-    if (activeFilters.installType.length > 0) {
-      if (!activeFilters.installType.some(it => specsDump.includes(it.toLowerCase()))) return false;
-    }
-
-    return true;
-  });
+  const toggleCategoryAccordion = (id: string) => {
+    setExpandedCategories(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
 
   const clearFilters = () => {
     setActiveFilters({ brand: [], category: [], thickness: [], wearLayer: [], type: [], colorTone: [], application: [], installType: [] });
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', window.location.pathname);
   };
 
-  const getActiveFilterCount = () => {
-    return Object.values(activeFilters).reduce((acc, curr) => acc + curr.length, 0);
-  };
+  const getActiveFilterCount = () => Object.values(activeFilters).reduce((acc, curr) => acc + curr.length, 0);
+
+  const processedList = (searched && results.length > 0 ? results : allProducts).filter(p => {
+    const specsDump = JSON.stringify(p.specs || {}).toLowerCase() + " " + (p.description || "").toLowerCase() + " " + (p.name || "").toLowerCase() + " " + (p.category || "").toLowerCase();
+    
+    if (activeFilters.thickness.length > 0 && !activeFilters.thickness.some(th => specsDump.includes(th.toLowerCase()))) return false;
+    if (activeFilters.wearLayer.length > 0 && !activeFilters.wearLayer.some(wl => specsDump.includes(wl.toLowerCase()))) return false;
+    if (activeFilters.type.length > 0 && !activeFilters.type.some(t => {
+        if (t === 'Sàn cuộn' || t === 'Thảm Cuộn') return specsDump.includes('roll') || specsDump.includes('cuộn');
+        if (t === 'Sàn tấm' || t === 'Thảm Tấm') return specsDump.includes('tile') || specsDump.includes('tấm');
+        if (t === 'Sàn thanh') return specsDump.includes('plank') || specsDump.includes('thanh');
+        if (t === 'Sàn hèm khóa') return specsDump.includes('spc') || specsDump.includes('hèm');
+        return specsDump.includes(t.toLowerCase());
+    })) return false;
+    if (activeFilters.application.length > 0 && !activeFilters.application.some(app => specsDump.includes(app.toLowerCase()))) return false;
+    if (activeFilters.brand.length > 0 && !activeFilters.brand.some(br => specsDump.includes(br.toLowerCase()))) return false;
+    if (activeFilters.category.length > 0 && !activeFilters.category.some(cat => specsDump.includes(cat.toLowerCase()))) return false;
+    if (activeFilters.installType.length > 0 && !activeFilters.installType.some(it => specsDump.includes(it.toLowerCase()))) return false;
+    
+    return true;
+  });
 
   if (!mounted) return null;
 
-  // Dynamic Brand Extractor
-  const globalBrands = Array.from(new Set(allProducts.map(p => p.brand).filter(Boolean)));
+  const SidebarContent = () => (
+    <div className="space-y-4">
+      {hierarchyData.map(categoryBlock => {
+        const isExpanded = expandedCategories.includes(categoryBlock.id);
+        const isActiveCat = activeFilters.category.includes(categoryBlock.categoryMatch);
+        
+        return (
+          <div key={categoryBlock.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button onClick={() => toggleCategoryAccordion(categoryBlock.id)} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors">
+              <span className="font-extrabold text-slate-800 dark:text-slate-200 tracking-wide text-sm">{categoryBlock.label}</span>
+              {isExpanded ? <ChevronUp className="w-5 h-5 text-blue-500" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+            </button>
+            
+            {isExpanded && (
+              <div className="p-4 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                
+                {/* Implicit Category Filter check */}
+                <label className="flex items-center gap-3 p-3 rounded-xl border bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 font-bold cursor-pointer hover:border-blue-300 transition-colors">
+                   <input type="checkbox" checked={isActiveCat} onChange={() => handleFilterToggle('category', categoryBlock.categoryMatch)} className="hidden" />
+                   <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${isActiveCat ? 'border-blue-600 bg-blue-600' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'}`}>
+                     {isActiveCat && <Check className="w-3.5 h-3.5 text-white" />}
+                   </div>
+                   <span className="text-[14px] text-blue-700 dark:text-blue-400">✅ Duyệt toàn bộ "{categoryBlock.label}"</span>
+                </label>
 
-  // Static Filter Options mapping specific catalog taxonomy
-  const staticFilters = [
-    { title: "Thương hiệu (Brand)", key: "brand" as keyof FilterState, options: globalBrands },
-    { title: "Phân loại Sản phẩm", key: "category" as keyof FilterState, options: ["Sàn Y Tế", "Sàn Thể Thao", "Sàn Văn Phòng", "Sàn Công Nghiệp", "Sàn Giao Thông"] },
-    { title: "Độ dày", key: "thickness" as keyof FilterState, options: ["2.0mm", "3.0mm", "4.5mm", "5.0mm", "8.0mm"] },
-    { title: "Lớp bảo vệ (Wear Layer)", key: "wearLayer" as keyof FilterState, options: ["0.1mm", "0.3mm", "0.5mm", "0.7mm", "1.0mm"] },
-    { title: "Cấu trúc Sàn", key: "type" as keyof FilterState, options: ["Sàn cuộn", "Sàn tấm", "Sàn thanh", "Sàn hèm khóa", "Sàn nâng"] },
-    { title: "Công Năng Nổi Bật", key: "application" as keyof FilterState, options: ["Kháng khuẩn", "Chống tĩnh điện", "Chịu lực cao", "Chống trơn trượt", "Cách âm", "Chống cháy"] },
-    { title: "Kiểu lắp đặt", key: "installType" as keyof FilterState, options: ["Dán keo", "Hèm khóa", "Tự dính", "Đặt rời"] },
-  ];
+                {categoryBlock.filters.map(subFilter => (
+                  <div key={subFilter.title} className="space-y-3">
+                    <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{subFilter.title}</h4>
+                    <div className="flex flex-col gap-1.5">
+                      {subFilter.options.map(opt => {
+                        const isChecked = activeFilters[subFilter.key].includes(opt);
+                        return (
+                          <label key={opt} className="flex items-start gap-3 py-1 cursor-pointer group">
+                             <input type="checkbox" checked={isChecked} onChange={() => handleFilterToggle(subFilter.key, opt)} className="hidden" />
+                             <div className={`mt-0.5 shrink-0 w-4 h-4 text-xs rounded border-2 flex items-center justify-center transition-colors ${isChecked ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400 dark:bg-slate-800'}`}>
+                               {isChecked && <Check className="w-3 h-3" />}
+                             </div>
+                             <span className={`text-[13px] font-semibold transition-colors ${isChecked ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'}`}>{opt}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-blue-300 dark:selection:bg-blue-900 transition-colors">
-      
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 md:h-20">
@@ -266,9 +337,7 @@ export default function Home() {
               <a href="/admin" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800">
                 <Settings className="w-4 h-4" /> CMS Portal
               </a>
-              
               <div className="w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
-
               <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
                 {theme === "dark" ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-blue-600" />}
               </button>
@@ -302,7 +371,7 @@ export default function Home() {
       {isFilterOpen && (
         <div className="fixed inset-0 z-[60] flex lg:hidden animate-in fade-in">
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsFilterOpen(false)}></div>
-          <div className="relative w-4/5 max-w-sm h-full bg-slate-50 dark:bg-slate-950 shadow-2xl flex flex-col animate-in slide-in-from-left-full border-r border-slate-200 dark:border-slate-800">
+          <div className="relative w-[85%] max-w-sm h-full bg-slate-50 dark:bg-slate-950 shadow-2xl flex flex-col animate-in slide-in-from-left-full border-r border-slate-200 dark:border-slate-800">
             <div className="p-5 flex justify-between items-center bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
               <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Filter className="w-5 h-5 text-blue-600" />
@@ -312,34 +381,14 @@ export default function Home() {
               <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"><X className="w-5 h-5 text-slate-600 dark:text-slate-300" /></button>
             </div>
             
-            <div className="px-5 py-6 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-4 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
               {getActiveFilterCount() > 0 && (
-                <button onClick={clearFilters} className="w-full py-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800/50">
+                <button onClick={clearFilters} className="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 transition-colors border border-red-200 dark:border-red-800/50">
                   Xóa Lọc Hiện Ở ({getActiveFilterCount()} Lựa Chọn)
                 </button>
               )}
-
-              {staticFilters.map(filterBlock => (
-                <div key={filterBlock.title}>
-                  <h3 className="text-[13px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">{filterBlock.title}</h3>
-                  <div className="space-y-2">
-                    {filterBlock.options.map(opt => {
-                      const isActive = activeFilters[filterBlock.key].includes(opt);
-                      return (
-                        <label key={opt} className={`flex items-center gap-3 p-3 rounded-xl border ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'} font-bold cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors`}>
-                          <input type="checkbox" checked={isActive} onChange={() => handleFilterToggle(filterBlock.key, opt)} className="hidden" />
-                          <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${isActive ? 'border-blue-600 bg-blue-600' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'}`}>
-                            {isActive && <Check className="w-3.5 h-3.5 text-white" />}
-                          </div>
-                          <span className="text-[15px]">{opt}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+              <SidebarContent />
             </div>
-
             <div className="p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
                <button onClick={() => setIsFilterOpen(false)} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-500/30 transition-shadow">
                  Xem {processedList.length} Kết Quả
@@ -351,13 +400,11 @@ export default function Home() {
 
       {/* Floating Action Buttons */}
       <div className="fixed bottom-6 right-6 z-30 flex flex-col gap-3">
-        {/* So sánh AI Nhanh Button (Visible if items selected) */}
         {compareList.length > 0 && (
           <button onClick={executeAiComparison} className="lg:hidden absolute bottom-[130px] -right-2 w-max px-6 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full shadow-2xl flex items-center justify-center font-black animate-in slide-in-from-bottom-5">
             <Scale className="w-6 h-6 mr-2" /> So Sánh ({compareList.length}/3)
           </button>
         )}
-
         <button onClick={() => setIsFilterOpen(true)} className="lg:hidden w-14 h-14 bg-slate-800 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 border border-slate-700 dark:border-slate-200 relative">
           <Filter className="w-6 h-6" />
           {getActiveFilterCount() > 0 && (
@@ -372,16 +419,18 @@ export default function Home() {
       </div>
 
       <main className="flex-1 flex flex-col relative z-10 transition-colors">
-        {/* Dynamic Compare Widget Float (Desktop) */}
         {compareList.length > 0 && (
           <div className="hidden lg:flex fixed bottom-8 left-1/2 -translate-x-1/2 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/50 shadow-2xl shadow-indigo-500/20 rounded-full pl-6 pr-3 py-3 items-center gap-6 animate-in slide-in-from-bottom-10">
             <div className="flex -space-x-3">
-               {compareList.map((c, i) => (
-                 <div key={i} className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 overflow-hidden relative group cursor-pointer" onClick={(e) => toggleCompare(c, e)}>
-                    <img src={c.images?.[0] || 'https://via.placeholder.com/100'} className="w-full h-full object-cover group-hover:blur-sm transition-all" />
-                    <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-4 h-4 text-white" /></div>
-                 </div>
-               ))}
+               {compareList.map((c, i) => {
+                 const imgUrl = typeof c.images?.[0] === 'string' ? c.images[0] : c.images?.[0]?.url;
+                 return (
+                   <div key={i} className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 overflow-hidden relative group cursor-pointer" onClick={(e) => toggleCompare(c, e)}>
+                      <img src={imgUrl || 'https://via.placeholder.com/100'} className="w-full h-full object-cover group-hover:blur-sm transition-all" />
+                      <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-4 h-4 text-white" /></div>
+                   </div>
+                 );
+               })}
                {compareList.length < 3 && (
                  <div className="w-10 h-10 rounded-full border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center z-[-1]">
                     <Plus className="w-4 h-4 text-indigo-400" />
@@ -398,7 +447,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* AI Compare Matrix Modal */}
         {isCompareModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 animate-in fade-in bg-slate-900/60 backdrop-blur-md">
             <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in zoom-in-95">
@@ -431,7 +479,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Responsive Centered Search Bar */}
         <section className="bg-white dark:bg-slate-900 px-4 py-12 md:py-20 border-b border-slate-200 dark:border-slate-800 relative overflow-hidden transition-colors">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-64 bg-blue-400/10 dark:bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
           
@@ -458,59 +505,25 @@ export default function Home() {
                   disabled={loading || !query.trim()}
                   className="px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-full text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 dark:disabled:bg-blue-900 font-black shadow-md flex items-center gap-2 transition-colors disabled:opacity-70"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Tư vấn / Xử lý <span className="hidden sm:inline">ngay</span></>}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Tư vấn <span className="hidden sm:inline">ngay</span></>}
                 </button>
               </div>
             </form>
           </div>
         </section>
 
-        {/* Main Grid Layout */}
         <section className="flex-1 bg-slate-50 dark:bg-slate-950 py-12 px-4 sm:px-6 lg:px-8 transition-colors">
           <div className="max-w-[1440px] mx-auto flex gap-8">
-            
-            {/* Desktop Dynamic Sidebar */}
             <aside className="hidden lg:block w-72 shrink-0 space-y-6">
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-6">
-                   <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5 text-blue-600" /> Bảng Phân Cấp</h2>
-                   {getActiveFilterCount() > 0 && (
-                     <button onClick={clearFilters} className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 rounded-full transition-colors">Xóa ({getActiveFilterCount()})</button>
-                   )}
-                </div>
-                
-                <div className="space-y-8">
-                  {staticFilters.map(filterBlock => (
-                     <div key={filterBlock.title} className="border-t border-slate-100 dark:border-slate-800 pt-5 mt-5 first:border-0 first:pt-0 first:mt-0">
-                       <h3 className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
-                         {filterBlock.title} <ChevronDown className="w-4 h-4 text-slate-400" />
-                       </h3>
-                       <div className="space-y-2.5">
-                         {filterBlock.options.map(opt => {
-                           const isActive = activeFilters[filterBlock.key].includes(opt);
-                           return (
-                             <label key={opt} className={`flex items-center gap-3 text-[14px] font-bold cursor-pointer group transition-colors ${isActive ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400'}`}>
-                               <div className={`w-5 h-5 rounded-[6px] flex items-center justify-center border-2 transition-colors ${isActive ? 'border-blue-600 bg-blue-600 shadow-sm' : 'border-slate-300 dark:border-slate-700 group-hover:border-blue-400 dark:bg-slate-900'}`}>
-                                 {isActive && <Check className="w-3.5 h-3.5 text-white" />}
-                               </div>
-                               {opt}
-                             </label>
-                           );
-                         })}
-                       </div>
-                     </div>
-                  ))}
-                </div>
+              <div className="flex items-center justify-between">
+                 <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5 text-blue-600" /> Bảng Phân Cấp</h2>
+                 {getActiveFilterCount() > 0 && (
+                   <button onClick={clearFilters} className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 rounded-full transition-colors">Xóa ({getActiveFilterCount()})</button>
+                 )}
               </div>
-
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-600/20">
-                 <Sparkles className="w-8 h-8 text-blue-200 mb-4" />
-                 <h3 className="text-xl font-black mb-2">Chưa phân tích được?</h3>
-                 <p className="text-blue-100 text-sm font-medium mb-4">Sử dụng công cụ chọn ở từng thẻ sản phẩm để AI đối chiếu chéo cấu trúc giá và mài mòn.</p>
-              </div>
+              <SidebarContent />
             </aside>
 
-            {/* Product Grid Layout */}
             <div className="flex-1">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-32 text-slate-500 dark:text-slate-400">
@@ -519,11 +532,10 @@ export default function Home() {
                      <Search className="w-8 h-8 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
                   <p className="font-extrabold text-xl text-slate-800 dark:text-slate-200 mt-6">Groq AI đang truy quét CSDL...</p>
-                  <p className="text-slate-500 font-medium mt-2">Giao tốc độ lên đến 800 tokens/s dành riêng cho bạn</p>
+                  <p className="text-slate-500 font-medium mt-2">Truy xuất tốc độ 800 tokens/s dành riêng cho bạn</p>
                 </div>
               ) : processedList.length > 0 ? (
                 <>
-                  {/* AI CONVERSATION RESPONSE BLOCK */}
                   {aiResponse && (
                     <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[2rem] p-6 sm:p-8 border border-blue-100 dark:border-blue-900/50 shadow-sm animate-in zoom-in-95">
                       <div className="flex items-center gap-3 mb-6">
@@ -557,24 +569,33 @@ export default function Home() {
                     {processedList.map((product, idx) => {
                       const isLiked = wishlist.includes(product.id);
                       const isComparing = compareList.find(p => p.id === product.id);
+                      // Type safety guard for images that might be objects
+                      const primaryImageUrl = typeof product.images?.[0] === 'string' ? product.images[0] : product.images?.[0]?.url;
 
                       return (
                         <div key={idx} className={`bg-white dark:bg-slate-900 rounded-[2rem] border-2 shadow-sm transition-all group overflow-hidden flex flex-col relative ${isComparing ? 'border-indigo-500 dark:border-indigo-500 shadow-indigo-500/20 shadow-xl scale-[1.02]' : 'border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-2xl'}`}>
                           
-                          {/* Toolbars in Photo */}
                           <div className="absolute z-10 top-4 right-4 flex flex-col gap-2 items-end">
                             <button onClick={(e) => toggleWishlist(product.id, e)} className="p-3 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg hover:scale-110 transition-transform mb-2">
                               <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
                             </button>
                           </div>
 
-                          {/* Image Container */}
                           <div className="aspect-[4/3] relative bg-slate-100 dark:bg-slate-800 overflow-hidden cursor-pointer">
                             <img
-                              src={product.images?.[0] || product.image || 'https://images.unsplash.com/photo-1581428982868-e410dd147b9d?q=80&w=800&auto=format&fit=crop'}
+                              src={primaryImageUrl || product.image || 'https://via.placeholder.com/800x600?text=No+Image'}
                               alt={product.name}
                               className={`w-full h-full object-cover transition-transform duration-700 ${isComparing ? 'scale-105 opacity-90' : 'group-hover:scale-110'}`}
                             />
+                            {/* Render Color Tags if images carry captions */}
+                            {product.images && product.images.length > 0 && typeof product.images[0] === 'object' && product.images[0].caption && (
+                               <div className="absolute top-4 left-4">
+                                  <span className="bg-black/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg border border-white/20">
+                                     {product.images[0].caption}
+                                  </span>
+                               </div>
+                            )}
+
                             <div className="absolute bottom-4 left-4 flex gap-2 w-[calc(100%-2rem)] flex-wrap">
                                <span className="px-3 py-1.5 text-[11px] font-black uppercase tracking-wide bg-blue-600/90 backdrop-blur-md text-white rounded-lg shadow-sm border border-blue-500/50">
                                  {product.category || 'Vật tư'}
@@ -587,7 +608,6 @@ export default function Home() {
                             </div>
                           </div>
 
-                          {/* Content Data */}
                           <div className="p-6 flex flex-col flex-1 cursor-pointer">
                             <h3 className="text-xl font-extrabold text-slate-900 dark:text-white leading-snug mb-3 line-clamp-2">
                               {product.name}
@@ -611,7 +631,6 @@ export default function Home() {
                               </div>
                             </div>
                             
-                            {/* Comparison Checkbox Standard */}
                             <label className="flex items-center gap-2 mt-4 cursor-pointer bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 group/cb" onClick={(e) => toggleCompare(product, e)}>
                                <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors border-2 ${isComparing ? 'bg-indigo-600 border-indigo-600 shrink-0' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 shrink-0 group-hover/cb:border-indigo-400'}`}>
                                  {isComparing && <Check className="w-3.5 h-3.5 text-white" />}

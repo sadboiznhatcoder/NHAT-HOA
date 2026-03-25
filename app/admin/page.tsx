@@ -21,7 +21,7 @@ export default function AdminPage() {
     materials: "",
     pp_score: 5,
     colors: [] as string[],
-    images: [] as string[],
+    images: [] as any[],
     installation_details: {} as Record<string, string>,
     specs: {} as Record<string, string>,
   });
@@ -67,7 +67,7 @@ export default function AdminPage() {
     setStatus("loading");
 
     try {
-      let uploadedUrls: string[] = [];
+      let uploadedUrls: any[] = [];
       for (let i = 0; i < newFiles.length; i++) {
         const file = newFiles[i];
         const fileExt = file.name.split('.').pop();
@@ -78,7 +78,7 @@ export default function AdminPage() {
         
         if (!error && data) {
           const { data: publicData } = supabase.storage.from('product-images').getPublicUrl(filePath);
-          uploadedUrls.push(publicData.publicUrl);
+          uploadedUrls.push({ url: publicData.publicUrl, caption: "" });
         }
         setUploadProgress({ current: i + 1, total: newFiles.length });
       }
@@ -94,8 +94,21 @@ export default function AdminPage() {
     e.target.value = '';
   };
 
-  const removeUploadedImage = (url: string) => {
-    setFormData(prev => ({ ...prev, images: prev.images.filter(img => img !== url) }));
+  const removeUploadedImage = (index: number) => {
+    setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
+  };
+
+  const updateImageCaption = (index: number, caption: string) => {
+    setFormData(prev => {
+      const newImages = [...prev.images];
+      const img = newImages[index];
+      if (typeof img === 'string') {
+         newImages[index] = { url: img, caption };
+      } else {
+         newImages[index] = { ...img, caption };
+      }
+      return { ...prev, images: newImages };
+    });
   };
 
   const handleEdit = (prod: any) => {
@@ -340,17 +353,30 @@ export default function AdminPage() {
 
             {formData.images.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mt-6">
-                {formData.images.map((url, idx) => (
-                  <div key={idx} className="aspect-square relative rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 group">
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                    <button onClick={() => removeUploadedImage(url)} type="button" className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-emerald-500/90 text-white text-[10px] font-bold text-center py-1 flex items-center justify-center gap-1">
-                      <Link className="w-3 h-3" /> Đã Upload
+                {formData.images.map((imgItem, idx) => {
+                  const url = typeof imgItem === 'string' ? imgItem : imgItem.url;
+                  const caption = typeof imgItem === 'string' ? '' : imgItem.caption || '';
+                  return (
+                    <div key={idx} className="flex flex-col gap-2">
+                       <div className="aspect-square relative rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 group shrink-0">
+                         <img src={url} alt="" className="w-full h-full object-cover" />
+                         <button onClick={() => removeUploadedImage(idx)} type="button" className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                         <div className="absolute bottom-0 left-0 right-0 bg-emerald-500/90 text-white text-[10px] font-bold text-center py-1 flex items-center justify-center gap-1">
+                           <Link className="w-3 h-3" /> Đã Upload
+                         </div>
+                       </div>
+                       <input 
+                         type="text" 
+                         className="w-full px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 placeholder-slate-400" 
+                         placeholder="Mã màu / Chú thích" 
+                         value={caption}
+                         onChange={(e) => updateImageCaption(idx, e.target.value)}
+                       />
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -396,10 +422,10 @@ export default function AdminPage() {
                    <tr key={prod.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group ${selectedProductId === prod.id ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
                      <td className="px-6 py-4">
                        <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
-                           {prod.images?.[0] && <img src={prod.images[0]} alt="" className="w-full h-full object-cover" />}
-                         </div>
-                         <div>
+                       <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
+                           {prod.images?.[0] && <img src={typeof prod.images[0] === 'string' ? prod.images[0] : prod.images[0].url} alt="" className="w-full h-full object-cover" />}
+                       </div>
+                       <div>
                             <span className="block font-bold text-slate-900 dark:text-white">{prod.name}</span>
                             <span className="text-xs text-slate-500">{prod.id.split('-')[0]}</span>
                          </div>
