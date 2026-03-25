@@ -44,8 +44,6 @@ export default function Home() {
     installType: []
   });
 
-  // LocalStorage Tracking
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
 
   // AI Compare Engine States
@@ -56,8 +54,6 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    const savedDocs = localStorage.getItem("nhat_hoa_search_history");
-    if (savedDocs) setSearchHistory(JSON.parse(savedDocs));
 
     const savedWishlist = localStorage.getItem("nhat_hoa_wishlist");
     if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
@@ -74,16 +70,34 @@ export default function Home() {
     const searchQuery = directQuery || query;
     if (!searchQuery.trim()) return;
 
+    // AI POST PROTOCOL INTERCEPTOR
+    if (searchQuery.trim().toUpperCase().startsWith("POST")) {
+      setLoading(true);
+      const rawText = searchQuery.trim().substring(4).trim();
+      try {
+        const res = await fetch("/api/ai-post", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rawText }),
+        });
+        const data = await res.json();
+        if (data.success && data.insertedId) {
+          window.location.href = `/admin?edit=${data.insertedId}`;
+        } else {
+          setAiResponse(`**Lỗi Cú pháp POST:** ${data.error || "Không thể phân tích dữ liệu, vui lòng thử lại."}`);
+        }
+      } catch (err) {
+        setAiResponse("**Lỗi Kết nối:** Không thể truy cập AI Server.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     setQuery(searchQuery);
     setLoading(true);
     setSearched(true);
     setAiResponse("");
-
-    if (!directQuery) {
-        const newHistory = [searchQuery, ...searchHistory.filter(q => q !== searchQuery)].slice(0, 4);
-        setSearchHistory(newHistory);
-        localStorage.setItem("nhat_hoa_search_history", JSON.stringify(newHistory));
-    }
 
     try {
       const res = await fetch("/api/ai-search", {
@@ -435,7 +449,7 @@ export default function Home() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="VD: Tìm sàn cuộn bệnh viện, chống tĩnh điện 3mm..."
+                placeholder="VD: Tìm sàn cuộn bệnh viện... hoặc nhập POST [Nội dung spec] để thêm kho"
                 className="block w-full pl-14 pr-24 sm:pr-36 py-4 sm:py-5 border-2 border-slate-200 dark:border-slate-800 rounded-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 font-bold text-base sm:text-lg transition-all shadow-xl shadow-slate-200/50 dark:shadow-none"
               />
               <div className="absolute inset-y-0 right-2 sm:right-2.5 flex items-center">
@@ -444,23 +458,10 @@ export default function Home() {
                   disabled={loading || !query.trim()}
                   className="px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-full text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 dark:disabled:bg-blue-900 font-black shadow-md flex items-center gap-2 transition-colors disabled:opacity-70"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Tư vấn <span className="hidden sm:inline">ngay</span></>}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Tư vấn / Xử lý <span className="hidden sm:inline">ngay</span></>}
                 </button>
               </div>
             </form>
-
-            {searchHistory.length > 0 && !loading && (
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-                <span className="text-xs font-bold text-slate-400 flex items-center gap-1 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
-                  <Clock className="w-4 h-4" /> Tra cứu:
-                </span>
-                {searchHistory.map((item, i) => (
-                  <button key={i} onClick={() => handleSearch(undefined, item)} className="px-4 py-2 bg-white dark:bg-slate-950 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-full transition-colors shadow-sm">
-                    {item}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </section>
 

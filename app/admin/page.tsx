@@ -44,7 +44,18 @@ export default function AdminPage() {
 
   const fetchProducts = async () => {
     const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-    if (data) setProductsList(data);
+    if (data) {
+      setProductsList(data);
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('edit');
+        if (editId) {
+          const prodToEdit = data.find(p => p.id === editId);
+          if (prodToEdit) handleEdit(prodToEdit);
+          window.history.replaceState({}, '', '/admin');
+        }
+      }
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
